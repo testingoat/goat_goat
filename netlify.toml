@@ -4,8 +4,9 @@
 # This file configures the build and deployment settings for the Flutter Web admin panel
 
 [build]
-  # Build command for Flutter Web admin panel
-  command = "flutter config --enable-web && flutter build web --target=lib/main_admin.dart --release --base-href=/"
+  # Using pre-built Flutter web files (built locally)
+  # No build command needed - Netlify will serve static files from build/web
+  command = "echo 'Deploying pre-built Flutter web admin panel'"
 
   # Output directory (Flutter web builds to build/web)
   publish = "build/web"
