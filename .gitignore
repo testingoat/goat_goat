@@ -141,3 +141,6 @@ Clipboard/
 *.backup
 *.bak
 *.old
+
+# Local Netlify folder
+.netlify
