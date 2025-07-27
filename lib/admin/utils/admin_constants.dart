@@ -25,6 +25,15 @@ class AdminConstants {
     if (customEnv.isNotEmpty) {
       return customEnv == 'development';
     }
+
+    // For admin panel deployment, allow development credentials
+    // Check if we're running as the admin panel (main_admin.dart)
+    if (kIsWeb) {
+      // In web deployment, allow development mode for admin panel
+      // This enables admin@goatgoat.com / admin123 credentials
+      return true;
+    }
+
     return kDebugMode;
   }
 
