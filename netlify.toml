@@ -1,0 +1,79 @@
+# Netlify Configuration for Goat Goat Admin Panel
+# This file configures the build and deployment settings for the Flutter Web admin panel
+
+[build]
+  # Build command for Flutter Web admin panel
+  command = "flutter config --enable-web && flutter build web --target=lib/main_admin.dart --release --web-renderer html"
+  
+  # Output directory (Flutter web builds to build/web)
+  publish = "build/web"
+  
+  # Environment variables for build
+  [build.environment]
+    FLUTTER_VERSION = "3.16.0"
+    SUPABASE_URL = "https://oaynfzqjielnsipttzbs.supabase.co"
+    SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9heW5menFqaWVsbnNpcHR0emJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzI2MjU4NzEsImV4cCI6MjA0ODIwMTg3MX0.VYyJqUOHlnyx7Qs8Qs8Qs8Qs8Qs8Qs8Qs8Qs8Qs8Qs8"
+    ADMIN_URL = "https://admin.goatgoat.info"
+    ADMIN_ENVIRONMENT = "production"
+
+# Redirect rules for SPA (Single Page Application)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Security headers for admin panel
+[[headers]]
+  for = "/*"
+  [headers.values]
+    # Security headers
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    X-XSS-Protection = "1; mode=block"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains"
+    
+    # Content Security Policy for Flutter Web
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://oaynfzqjielnsipttzbs.supabase.co; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://oaynfzqjielnsipttzbs.supabase.co wss://oaynfzqjielnsipttzbs.supabase.co; frame-src 'none';"
+    
+    # Cache control
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Cache control for specific file types
+[[headers]]
+  for = "*.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "*.js"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "*.css"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Admin panel specific redirects
+[[redirects]]
+  from = "/admin"
+  to = "/"
+  status = 301
+
+[[redirects]]
+  from = "/login"
+  to = "/"
+  status = 301
+
+# Development context (for branch deploys)
+[context.branch-deploy]
+  [context.branch-deploy.environment]
+    ADMIN_ENVIRONMENT = "staging"
+    ADMIN_URL = "https://deploy-preview-$DEPLOY_ID--your-site-name.netlify.app"
+
+# Deploy preview context
+[context.deploy-preview]
+  [context.deploy-preview.environment]
+    ADMIN_ENVIRONMENT = "preview"
+    ADMIN_URL = "https://deploy-preview-$DEPLOY_ID--your-site-name.netlify.app"
