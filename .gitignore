@@ -1,0 +1,143 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.swiftpm/
+migrate_working_dir/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# VS Code
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# Flutter/Dart/Pub related
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/build/
+**/build/
+**/android/app/debug
+**/android/app/profile
+**/android/app/release
+**/ios/build/
+**/macos/build/
+**/linux/build/
+**/windows/build/
+
+# Symbolication related
+app.*.symbols
+
+# Obfuscation related
+app.*.map.json
+
+# Android Studio will place build artifacts here
+/android/app/debug
+/android/app/profile
+/android/app/release
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+
+# Supabase
+supabase/.temp/
+supabase/.branches/
+supabase/.env
+
+# Test files
+coverage/
+*.lcov
+test_results/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*~
+*.bak
+*.swp
+*.swo
+
+# Logs
+logs/
+*.log
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Screenshots and images (keep only essential ones)
+Clipboard/
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.ico
+!web/icons/
+!android/app/src/main/res/
+!ios/Runner/Assets.xcassets/
+!macos/Runner/Assets.xcassets/
+!windows/runner/resources/
+
+# Documentation (keep only essential)
+*.docx
+*.doc
+*.pdf
+!README.md
+!*.md
+
+# Database
+*.sqlite
+*.sqlite3
+*.db
+
+# Certificates
+*.pem
+*.key
+*.crt
+*.p12
+*.jks
+
+# Backup files
+*.backup
+*.bak
+*.old
