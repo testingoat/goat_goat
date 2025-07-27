@@ -67,12 +67,12 @@
 ```
 goat_goat/
 ├── lib/                          # Shared mobile app code
-├── lib_admin/                    # Admin-specific code
+├── lib/admin/                    # Admin-specific code
 │   ├── screens/                  # Admin screens
 │   ├── widgets/                  # Admin-specific widgets
 │   ├── services/                 # Admin service extensions
 │   └── utils/                    # Admin utilities
-├── web_admin/                    # Admin web configuration
+├── build/web/                    # Built Flutter web files
 │   ├── index.html               # Admin-specific HTML
 │   ├── manifest.json            # Admin PWA manifest
 │   └── icons/                   # Admin-specific icons
@@ -91,9 +91,9 @@ lib/services/
 └── notification_service.dart    # ✅ Reuse as-is
 
 // Admin-specific extensions
-lib_admin/services/
+lib/admin/services/
 ├── admin_auth_service.dart      # 🆕 Admin authentication
-├── admin_review_service.dart    # 🆕 Review moderation
+├── product_review_service.dart  # 🆕 Review moderation
 ├── admin_notification_service.dart # 🆕 Notification management
 ├── admin_user_service.dart      # 🆕 User management
 └── admin_analytics_service.dart # 🆕 Analytics and reporting

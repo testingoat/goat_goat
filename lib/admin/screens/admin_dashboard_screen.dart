@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/admin_auth_service.dart';
 import '../utils/admin_constants.dart';
 import 'admin_login_screen.dart';
+import 'product_reviews_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({Key? key}) : super(key: key);
@@ -100,7 +101,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     ],
                   ),
                 ),
-                
+
                 // Admin info
                 Container(
                   padding: const EdgeInsets.all(16),
@@ -108,10 +109,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     children: [
                       CircleAvatar(
                         backgroundColor: Colors.green[100],
-                        child: Icon(
-                          Icons.person,
-                          color: Colors.green[600],
-                        ),
+                        child: Icon(Icons.person, color: Colors.green[600]),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -119,7 +117,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              _authService.currentAdmin?['full_name'] ?? 'Admin User',
+                              _authService.currentAdmin?['full_name'] ??
+                                  'Admin User',
                               style: const TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 14,
@@ -138,35 +137,36 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     ],
                   ),
                 ),
-                
+
                 const Divider(),
-                
+
                 // Menu items
                 Expanded(
                   child: ListView.builder(
                     itemCount: _menuItems.length,
                     itemBuilder: (context, index) {
                       final item = _menuItems[index];
-                      final hasPermission = item.permission == null || 
+                      final hasPermission =
+                          item.permission == null ||
                           _authService.hasPermission(item.permission!);
-                      
+
                       if (!hasPermission) return const SizedBox.shrink();
-                      
+
                       return ListTile(
                         leading: Icon(
                           item.icon,
-                          color: _selectedIndex == index 
-                              ? Colors.green[600] 
+                          color: _selectedIndex == index
+                              ? Colors.green[600]
                               : Colors.grey[600],
                         ),
                         title: Text(
                           item.title,
                           style: TextStyle(
-                            color: _selectedIndex == index 
-                                ? Colors.green[600] 
+                            color: _selectedIndex == index
+                                ? Colors.green[600]
                                 : Colors.grey[800],
-                            fontWeight: _selectedIndex == index 
-                                ? FontWeight.bold 
+                            fontWeight: _selectedIndex == index
+                                ? FontWeight.bold
                                 : FontWeight.normal,
                           ),
                         ),
@@ -181,9 +181,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     },
                   ),
                 ),
-                
+
                 const Divider(),
-                
+
                 // Logout button
                 ListTile(
                   leading: Icon(Icons.logout, color: Colors.red[600]),
@@ -193,12 +193,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   ),
                   onTap: _handleLogout,
                 ),
-                
+
                 const SizedBox(height: 16),
               ],
             ),
           ),
-          
+
           // Main content
           Expanded(
             child: Column(
@@ -227,7 +227,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         ),
                       ),
                       const Spacer(),
-                      
+
                       // Environment indicator
                       Container(
                         padding: const EdgeInsets.symmetric(
@@ -235,16 +235,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           vertical: 6,
                         ),
                         decoration: BoxDecoration(
-                          color: AdminConstants.isDevelopment 
-                              ? Colors.orange[100] 
+                          color: AdminConstants.isDevelopment
+                              ? Colors.orange[100]
                               : Colors.green[100],
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: Text(
-                          AdminConstants.isDevelopment ? 'DEVELOPMENT' : 'PRODUCTION',
+                          AdminConstants.isDevelopment
+                              ? 'DEVELOPMENT'
+                              : 'PRODUCTION',
                           style: TextStyle(
-                            color: AdminConstants.isDevelopment 
-                                ? Colors.orange[800] 
+                            color: AdminConstants.isDevelopment
+                                ? Colors.orange[800]
                                 : Colors.green[800],
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
@@ -254,11 +256,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     ],
                   ),
                 ),
-                
+
                 // Content area
-                Expanded(
-                  child: _buildContent(),
-                ),
+                Expanded(child: _buildContent()),
               ],
             ),
           ),
@@ -297,7 +297,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             style: Theme.of(context).textTheme.headlineSmall,
           ),
           const SizedBox(height: 16),
-          
+
           // Quick stats cards
           Row(
             children: [
@@ -338,9 +338,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               ),
             ],
           ),
-          
+
           const SizedBox(height: 32),
-          
+
           // Development info
           if (AdminConstants.isDevelopment)
             Container(
@@ -381,7 +381,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
-  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
+  Widget _buildStatCard(
+    String title,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -413,46 +418,30 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             ],
           ),
           const SizedBox(height: 8),
-          Text(
-            title,
-            style: TextStyle(
-              color: Colors.grey[600],
-              fontSize: 14,
-            ),
-          ),
+          Text(title, style: TextStyle(color: Colors.grey[600], fontSize: 14)),
         ],
       ),
     );
   }
 
   Widget _buildReviewModerationContent() {
-    return const Center(
-      child: Text('Review Moderation - Coming Soon'),
-    );
+    return const ProductReviewsScreen();
   }
 
   Widget _buildNotificationsContent() {
-    return const Center(
-      child: Text('Notifications Management - Coming Soon'),
-    );
+    return const Center(child: Text('Notifications Management - Coming Soon'));
   }
 
   Widget _buildUserManagementContent() {
-    return const Center(
-      child: Text('User Management - Coming Soon'),
-    );
+    return const Center(child: Text('User Management - Coming Soon'));
   }
 
   Widget _buildAnalyticsContent() {
-    return const Center(
-      child: Text('Analytics - Coming Soon'),
-    );
+    return const Center(child: Text('Analytics - Coming Soon'));
   }
 
   Widget _buildSystemAdminContent() {
-    return const Center(
-      child: Text('System Administration - Coming Soon'),
-    );
+    return const Center(child: Text('System Administration - Coming Soon'));
   }
 
   Future<void> _handleLogout() async {
@@ -478,9 +467,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       await _authService.logout();
       if (mounted) {
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (context) => const AdminLoginScreen(),
-          ),
+          MaterialPageRoute(builder: (context) => const AdminLoginScreen()),
         );
       }
     }
@@ -492,9 +479,5 @@ class AdminMenuItem {
   final String title;
   final String? permission;
 
-  AdminMenuItem({
-    required this.icon,
-    required this.title,
-    this.permission,
-  });
+  AdminMenuItem({required this.icon, required this.title, this.permission});
 }

@@ -1,0 +1,7 @@
+# Flutter Web SPA routing
+/*    /index.html   200
+
+# Admin panel specific routes
+/admin/*    /index.html   200
+/login    /index.html   200
+/dashboard    /index.html   200

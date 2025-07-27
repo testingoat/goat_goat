@@ -1,0 +1,24 @@
+/*
+  # Very permissive CSP for Flutter Web - Admin Panel
+  Content-Security-Policy: default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; script-src * 'unsafe-inline' 'unsafe-eval' data: blob:; style-src * 'unsafe-inline' data: blob:; font-src * data: blob:; img-src * data: blob:; connect-src * data: blob:; worker-src * blob: data:; child-src * blob: data:; object-src * data: blob:; base-uri 'self'; frame-ancestors 'none'; manifest-src *;
+
+  # Minimal headers for Flutter Web
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+
+# Specific rules for Flutter assets
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/canvaskit/*
+  Cache-Control: public, max-age=31536000, immutable
+  Content-Type: application/wasm
+
+# Flutter service worker
+/flutter_service_worker.js
+  Cache-Control: no-cache
+
+# Main Dart JS file
+/main.dart.js
+  Cache-Control: public, max-age=31536000, immutable
+  Content-Type: application/javascript

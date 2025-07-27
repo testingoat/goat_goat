@@ -33,9 +33,8 @@ migrate_working_dir/
 .flutter-plugins-dependencies
 .pub-cache/
 .pub/
-# Temporarily allowing build/ for admin panel deployment
-# /build/
-# **/build/
+/build/
+**/build/
 **/android/app/debug
 **/android/app/profile
 **/android/app/release
