@@ -59,11 +59,18 @@ if %errorlevel% equ 0 (
     echo 🚀 Netlify CLI detected. You can now deploy with:
     echo    netlify deploy --prod --dir=build/web
     echo.
+    echo 📋 Your Netlify Project Details:
+    echo    Project ID: 3e82efaf-d46b-4f18-a464-1b11bff4d568
+    echo    Site Name: benevolent-toffee-58a972
+    echo    Admin URL: https://admin.goatgoat.info
+    echo.
 ) else (
     echo 💡 To deploy, you can:
-    echo    1. Use Netlify CLI: npm install -g netlify-cli
-    echo    2. Or drag and drop build/web folder to Netlify dashboard
-    echo    3. Or push to Git for automatic deployment
+    echo    1. Install Netlify CLI: npm install -g netlify-cli
+    echo    2. Login: netlify login
+    echo    3. Link project: netlify link --id=3e82efaf-d46b-4f18-a464-1b11bff4d568
+    echo    4. Deploy: netlify deploy --prod --dir=build/web
+    echo    5. Or push to Git for automatic deployment
     echo.
 )
 

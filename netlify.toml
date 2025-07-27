@@ -1,13 +1,15 @@
 # Netlify Configuration for Goat Goat Admin Panel
+# Project: benevolent-toffee-58a972
+# Admin URL: https://app.netlify.com/projects/benevolent-toffee-58a972
 # This file configures the build and deployment settings for the Flutter Web admin panel
 
 [build]
   # Build command for Flutter Web admin panel
   command = "flutter config --enable-web && flutter build web --target=lib/main_admin.dart --release --web-renderer html"
-  
+
   # Output directory (Flutter web builds to build/web)
   publish = "build/web"
-  
+
   # Environment variables for build
   [build.environment]
     FLUTTER_VERSION = "3.16.0"

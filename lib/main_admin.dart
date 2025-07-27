@@ -3,10 +3,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
 
 // Admin-specific imports
-import 'lib_admin/screens/admin_login_screen.dart';
-import 'lib_admin/screens/admin_dashboard_screen.dart';
-import 'lib_admin/services/admin_auth_service.dart';
-import 'lib_admin/utils/admin_constants.dart';
+import 'admin/screens/admin_login_screen.dart';
+import 'admin/screens/admin_dashboard_screen.dart';
+import 'admin/services/admin_auth_service.dart';
+import 'admin/utils/admin_constants.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -83,14 +83,10 @@ class _AdminAppWrapperState extends State<AdminAppWrapper> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(),
-        ),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    return _isAuthenticated 
+    return _isAuthenticated
         ? const AdminDashboardScreen()
         : const AdminLoginScreen();
   }

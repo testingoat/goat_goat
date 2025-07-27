@@ -2,14 +2,27 @@
 echo 🚀 Deploying Goat Goat Admin Panel to Netlify
 echo.
 
+REM Project Details
+echo 📋 Netlify Project Information:
+echo    Project Name: benevolent-toffee-58a972
+echo    Project ID: 3e82efaf-d46b-4f18-a464-1b11bff4d568
+echo    Project URL: https://goatgoat.info
+echo    Admin URL: https://admin.goatgoat.info
+echo    Repo: https://github.com/testingoat/goat_goat
+echo.
+
 REM Check if Netlify CLI is installed
 netlify --version >nul 2>&1
 if %errorlevel% neq 0 (
     echo ❌ Netlify CLI is not installed
-    echo 💡 Install it with: npm install -g netlify-cli
-    echo    Then run: netlify login
-    pause
-    exit /b 1
+    echo 💡 Installing Netlify CLI...
+    npm install -g netlify-cli
+    if %errorlevel% neq 0 (
+        echo ❌ Failed to install Netlify CLI
+        echo 💡 Please install manually: npm install -g netlify-cli
+        pause
+        exit /b 1
+    )
 )
 
 REM Check if build directory exists
