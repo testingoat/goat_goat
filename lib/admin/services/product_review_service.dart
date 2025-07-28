@@ -46,7 +46,7 @@ class ProductReviewService {
       var query = _supabase.from('product_reviews').select('''
             *,
             customers!inner(id, full_name, phone_number),
-            meat_products!inner(id, name, seller_id, sellers!inner(business_name))
+            meat_products!inner(id, name, seller_id, sellers!inner(seller_name))
           ''');
 
       // Apply filters
