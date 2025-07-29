@@ -179,9 +179,9 @@ class ReviewModerationCard extends StatelessWidget {
                         ),
                       ),
                     ),
-                    if (seller['business_name'] != null) ...[
+                    if (seller['seller_name'] != null) ...[
                       Text(
-                        'by ${seller['business_name']}',
+                        'by ${seller['seller_name']}',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: Colors.grey.shade600,
                         ),
