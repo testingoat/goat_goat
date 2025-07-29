@@ -27,6 +27,9 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen>
   // Tab controller for different views
   late TabController _tabController;
 
+  // Scroll controller to manage ListView position
+  final ScrollController _scrollController = ScrollController();
+
   // Data state
   List<Map<String, dynamic>> _reviews = [];
   Map<String, dynamic> _statistics = {};
@@ -59,6 +62,7 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen>
   void dispose() {
     _tabController.dispose();
     _searchController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -113,6 +117,16 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen>
         setState(() {
           if (reset) {
             _reviews = List<Map<String, dynamic>>.from(result['reviews']);
+            // Reset scroll position to top when data is reset
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (_scrollController.hasClients) {
+                _scrollController.animateTo(
+                  0,
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeOut,
+                );
+              }
+            });
           } else {
             _reviews.addAll(List<Map<String, dynamic>>.from(result['reviews']));
           }
@@ -507,14 +521,23 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen>
 
     return NotificationListener<ScrollNotification>(
       onNotification: (ScrollNotification scrollInfo) {
+        // Only trigger pagination if:
+        // 1. Not currently loading
+        // 2. Has more data to load
+        // 3. User has scrolled to the bottom
+        // 4. The ListView actually has scrollable content (maxScrollExtent > 0)
+        // 5. User is near the bottom (within 100 pixels) to avoid exact equality issues
         if (!_isLoading &&
             _hasMore &&
-            scrollInfo.metrics.pixels == scrollInfo.metrics.maxScrollExtent) {
+            scrollInfo.metrics.maxScrollExtent > 0 &&
+            scrollInfo.metrics.pixels >=
+                scrollInfo.metrics.maxScrollExtent - 100) {
           _loadReviews();
         }
         return false;
       },
       child: ListView.builder(
+        controller: _scrollController,
         padding: const EdgeInsets.all(16),
         itemCount: _reviews.length + (_hasMore ? 1 : 0),
         itemBuilder: (context, index) {
