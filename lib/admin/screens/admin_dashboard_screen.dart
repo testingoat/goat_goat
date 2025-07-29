@@ -3,6 +3,7 @@ import '../services/admin_auth_service.dart';
 import '../utils/admin_constants.dart';
 import 'admin_login_screen.dart';
 import 'product_reviews_screen.dart';
+import 'notifications_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({Key? key}) : super(key: key);
@@ -429,7 +430,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
   Widget _buildNotificationsContent() {
-    return const Center(child: Text('Notifications Management - Coming Soon'));
+    return const NotificationsScreen();
   }
 
   Widget _buildUserManagementContent() {
