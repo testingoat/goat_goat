@@ -19,7 +19,19 @@ serve(async (req) => {
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
 
     if (!FCM_SERVER_KEY) {
-      throw new Error('FCM_SERVER_KEY environment variable is required')
+      console.log('⚠️ FCM_SERVER_KEY not configured - returning test response')
+      return new Response(
+        JSON.stringify({
+          success: false,
+          message: 'FCM_SERVER_KEY environment variable is not configured. Please set it in Supabase Dashboard → Project Settings → Edge Functions → Environment Variables',
+          test_mode: true,
+          instructions: 'Add FCM_SERVER_KEY with your Firebase Cloud Messaging server key'
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
     }
 
     if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
