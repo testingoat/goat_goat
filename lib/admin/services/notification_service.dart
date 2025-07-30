@@ -20,6 +20,11 @@ class NotificationService {
   static const bool _enableTemplateManagement = true;
   static const bool _enableAnalytics = true;
 
+  // FCM Push Notification feature flags
+  static const bool _enablePushNotifications = true;
+  static const bool _enableTopicNotifications = true;
+  static const bool _enableTargetedNotifications = true;
+
   // ===== TEMPLATE MANAGEMENT =====
 
   /// Get all notification templates with optional filtering
@@ -843,6 +848,131 @@ class NotificationService {
     }
   }
 
+  // ===== FCM PUSH NOTIFICATION METHODS =====
+
+  /// Send push notification using Firebase Cloud Messaging
+  Future<Map<String, dynamic>> sendPushNotification({
+    required String title,
+    required String body,
+    String? targetUserId,
+    String? targetUserType, // 'customer', 'seller', or 'admin'
+    String? topic,
+    Map<String, dynamic>? data,
+    String? deepLinkUrl,
+  }) async {
+    try {
+      if (!_enablePushNotifications) {
+        return {
+          'success': false,
+          'message': 'Push notifications feature is currently disabled',
+        };
+      }
+
+      final adminId = _adminAuth.currentAdminId;
+      if (adminId == null) {
+        return {'success': false, 'message': 'Admin authentication required'};
+      }
+
+      print('🔔 Sending push notification: $title');
+
+      // Call Supabase edge function to send FCM notification
+      final response = await _supabase.functions.invoke(
+        'send-push-notification',
+        body: {
+          'title': title,
+          'body': body,
+          'target_user_id': targetUserId,
+          'target_user_type': targetUserType,
+          'topic': topic,
+          'data': data ?? {},
+          'deep_link_url': deepLinkUrl,
+          'admin_id': adminId,
+        },
+      );
+
+      if (response.status == 200) {
+        await _adminAuth.logAction(
+          action: 'send_push_notification',
+          resourceType: 'notification',
+          metadata: {
+            'title': title,
+            'target_user_id': targetUserId,
+            'target_user_type': targetUserType,
+            'topic': topic,
+            'has_deep_link': deepLinkUrl != null,
+          },
+        );
+
+        return {
+          'success': true,
+          'message': 'Push notification sent successfully',
+          'data': response.data,
+        };
+      } else {
+        return {
+          'success': false,
+          'message': 'Failed to send push notification: ${response.status}',
+        };
+      }
+    } catch (e) {
+      print('❌ Error sending push notification: $e');
+      return {
+        'success': false,
+        'message': 'Error sending push notification: ${e.toString()}',
+      };
+    }
+  }
+
+  /// Send push notification to topic (broadcast)
+  Future<Map<String, dynamic>> sendTopicPushNotification({
+    required String title,
+    required String body,
+    required String topic,
+    Map<String, dynamic>? data,
+    String? deepLinkUrl,
+  }) async {
+    if (!_enableTopicNotifications) {
+      return {
+        'success': false,
+        'message': 'Topic notifications feature is currently disabled',
+      };
+    }
+
+    return await sendPushNotification(
+      title: title,
+      body: body,
+      topic: topic,
+      data: data,
+      deepLinkUrl: deepLinkUrl,
+    );
+  }
+
+  /// Send targeted push notification to specific user
+  Future<Map<String, dynamic>> sendTargetedPushNotification({
+    required String title,
+    required String body,
+    required String targetUserId,
+    required String targetUserType,
+    Map<String, dynamic>? data,
+    String? deepLinkUrl,
+  }) async {
+    if (!_enableTargetedNotifications) {
+      return {
+        'success': false,
+        'message': 'Targeted notifications feature is currently disabled',
+      };
+    }
+
+    return await sendPushNotification(
+      title: title,
+      body: body,
+      targetUserId: targetUserId,
+      targetUserType: targetUserType,
+      data: data,
+      deepLinkUrl: deepLinkUrl,
+    );
+  }
+
   // ===== UTILITY METHODS =====
 
   /// Check if SMS notifications are enabled
@@ -856,6 +986,15 @@ class NotificationService {
 
   /// Check if analytics are enabled
   bool get isAnalyticsEnabled => _enableAnalytics;
+
+  /// Check if push notifications are enabled
+  bool get isPushNotificationsEnabled => _enablePushNotifications;
+
+  /// Check if topic notifications are enabled
+  bool get isTopicNotificationsEnabled => _enableTopicNotifications;
+
+  /// Check if targeted notifications are enabled
+  bool get isTargetedNotificationsEnabled => _enableTargetedNotifications;
 }
 
 extension StringExtension on String {

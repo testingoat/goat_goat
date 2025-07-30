@@ -1,5 +1,15 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Standard permissions -->
     <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- FCM notification permissions -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+
+    <!-- Optional: For notification scheduling -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <application
         android:label="goat_goat"
         android:name="${applicationName}"
@@ -31,6 +41,19 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+
+        <!-- FCM notification configuration -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_notification" />
+
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_color"
+            android:resource="@color/notification_color" />
+
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="goat_goat_notifications" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

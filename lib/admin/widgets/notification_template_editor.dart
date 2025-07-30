@@ -42,6 +42,13 @@ class _NotificationTemplateEditorState
   bool _isLoading = false;
   String? _error;
 
+  // Delivery method state
+  bool _enableSMS = true;
+  bool _enablePushNotification = true;
+  String _pushTarget = 'all';
+  final _specificUserController = TextEditingController();
+  final _deepLinkController = TextEditingController();
+
   // Preview state
   Map<String, dynamic> _previewVariables = {};
   String _previewTitle = '';
@@ -67,6 +74,8 @@ class _NotificationTemplateEditorState
     _titleTemplateController.dispose();
     _messageTemplateController.dispose();
     _variablesController.dispose();
+    _specificUserController.dispose();
+    _deepLinkController.dispose();
     super.dispose();
   }
 
@@ -438,6 +447,11 @@ class _NotificationTemplateEditorState
               ),
             ),
 
+            const SizedBox(height: 24),
+
+            // Delivery Methods Section
+            _buildDeliveryMethodSection(),
+
             const SizedBox(height: 16),
 
             // Active Toggle
@@ -614,6 +628,132 @@ class _NotificationTemplateEditorState
               ),
             ),
           ],
+        ],
+      ),
+    );
+  }
+
+  /// Build delivery method selection section
+  Widget _buildDeliveryMethodSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Delivery Methods',
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 12),
+
+        // SMS Toggle
+        CheckboxListTile(
+          title: const Text('SMS'),
+          subtitle: const Text('Send via SMS using Fast2SMS'),
+          value: _enableSMS,
+          onChanged: (value) => setState(() => _enableSMS = value ?? false),
+          controlAffinity: ListTileControlAffinity.leading,
+        ),
+
+        // Push Notification Toggle
+        if (_notificationService.isPushNotificationsEnabled)
+          CheckboxListTile(
+            title: const Text('Push Notification'),
+            subtitle: const Text('Send via Firebase Cloud Messaging'),
+            value: _enablePushNotification,
+            onChanged: (value) =>
+                setState(() => _enablePushNotification = value ?? false),
+            controlAffinity: ListTileControlAffinity.leading,
+          ),
+
+        // Push Notification Options
+        if (_enablePushNotification &&
+            _notificationService.isPushNotificationsEnabled) ...[
+          const SizedBox(height: 16),
+          _buildPushNotificationOptions(),
+        ],
+      ],
+    );
+  }
+
+  /// Build push notification options
+  Widget _buildPushNotificationOptions() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.blue.shade50,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.blue.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Push Notification Options',
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 12),
+
+          // Target Selection
+          DropdownButtonFormField<String>(
+            value: _pushTarget,
+            decoration: const InputDecoration(
+              labelText: 'Target Audience',
+              border: OutlineInputBorder(),
+              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            ),
+            items: const [
+              DropdownMenuItem(value: 'all', child: Text('All Users')),
+              DropdownMenuItem(
+                value: 'customers',
+                child: Text('Customers Only'),
+              ),
+              DropdownMenuItem(value: 'sellers', child: Text('Sellers Only')),
+              DropdownMenuItem(value: 'specific', child: Text('Specific User')),
+            ],
+            onChanged: (value) => setState(() => _pushTarget = value ?? 'all'),
+          ),
+
+          // Specific User Input
+          if (_pushTarget == 'specific') ...[
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _specificUserController,
+              decoration: const InputDecoration(
+                labelText: 'User ID or Phone Number',
+                border: OutlineInputBorder(),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+              ),
+            ),
+          ],
+
+          const SizedBox(height: 12),
+
+          // Deep Link URL
+          TextFormField(
+            controller: _deepLinkController,
+            decoration: const InputDecoration(
+              labelText: 'Deep Link URL (optional)',
+              hintText: '/product/123 or /orders',
+              border: OutlineInputBorder(),
+              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            ),
+          ),
+
+          const SizedBox(height: 8),
+
+          // Help text
+          Text(
+            'Deep links allow users to navigate directly to specific screens when they tap the notification.',
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: Colors.grey.shade600),
+          ),
         ],
       ),
     );

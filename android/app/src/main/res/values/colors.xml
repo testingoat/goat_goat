@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Goat Goat brand colors -->
+    <color name="notification_color">#047857</color> <!-- emerald-700 -->
+    <color name="primary_green">#065f46</color> <!-- emerald-800 -->
+    <color name="accent_green">#10b981</color> <!-- emerald-500 -->
+</resources>

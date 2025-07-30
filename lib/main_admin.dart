@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
+// import 'package:firebase_core/firebase_core.dart'; // Temporarily disabled for web testing
 
 // Admin-specific imports
 import 'admin/screens/admin_login_screen.dart';
@@ -8,9 +9,24 @@ import 'admin/screens/admin_dashboard_screen.dart';
 import 'admin/services/admin_auth_service.dart';
 import 'admin/utils/admin_constants.dart';
 
-void main() {
+void main() async {
   // Enhanced error handling for Flutter web
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Firebase for admin panel (web platform) - temporarily disabled
+  // if (kIsWeb) {
+  //   try {
+  //     await Firebase.initializeApp();
+  //     if (kDebugMode) {
+  //       print('🔥 Firebase initialized for admin panel');
+  //     }
+  //   } catch (e) {
+  //     if (kDebugMode) {
+  //       print('⚠️ Firebase initialization skipped for admin panel: $e');
+  //       print('🔄 Admin panel will continue without Firebase features');
+  //     }
+  //   }
+  // }
 
   // Global error handling
   FlutterError.onError = (FlutterErrorDetails details) {

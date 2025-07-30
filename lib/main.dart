@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'dart:ui';
 import 'seller_portal_screen.dart';
 import 'mobile_number_modal.dart';
@@ -6,8 +7,42 @@ import 'supabase_service.dart';
 import 'screens/developer_dashboard_screen.dart';
 import 'screens/customer_portal_screen.dart';
 
-void main() {
+// Firebase imports with conditional loading for web compatibility
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'services/fcm_service.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Firebase with platform-specific handling
+  await _initializeFirebase();
+
   runApp(const MyApp());
+}
+
+/// Initialize Firebase with proper error handling and platform detection
+Future<void> _initializeFirebase() async {
+  try {
+    // Initialize Firebase Core
+    await Firebase.initializeApp();
+
+    // Set background message handler for mobile platforms
+    if (!kIsWeb) {
+      FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+    }
+
+    if (kDebugMode) {
+      print('🔥 Firebase initialized successfully');
+      print('📱 Platform: ${kIsWeb ? 'Web' : 'Mobile'}');
+    }
+  } catch (e) {
+    if (kDebugMode) {
+      print('⚠️ Firebase initialization failed: $e');
+      print('📱 Platform: ${kIsWeb ? 'Web' : 'Mobile'}');
+      print('🔄 App will continue without Firebase features');
+    }
+  }
 }
 
 class MyApp extends StatefulWidget {
@@ -35,14 +70,85 @@ class _MyAppState extends State<MyApp> {
         supabaseAnonKey:
             'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9heW5menFqaWVsbnNpcHR0emJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk5MDU3NDUsImV4cCI6MjA2NTQ4MTc0NX0.RnhpZ7ri3Nf3vmDMCmLqYnB8cRNZc_u-3dhCutpUWEA',
       );
+
+      // Initialize FCM Service with feature flag support
+      await _initializeFCMService();
     } catch (e) {
       // Handle initialization error
-      print('Supabase initialization error: $e');
+      print('Initialization error: $e');
     } finally {
       setState(() {
         _isLoading = false;
       });
     }
+  }
+
+  /// Initialize FCM Service with proper error handling
+  Future<void> _initializeFCMService() async {
+    try {
+      final fcmService = FCMService();
+
+      // Check if FCM is supported on current platform
+      if (fcmService.isInitialized) {
+        if (kDebugMode) {
+          print('🔔 FCM Service already initialized');
+        }
+        return;
+      }
+
+      // Initialize FCM service
+      final initialized = await fcmService.initialize(
+        onNotificationTapped: _handleNotificationTapped,
+      );
+
+      if (initialized) {
+        if (kDebugMode) {
+          print('🔔 FCM Service initialized successfully');
+          print('📱 FCM Token: ${fcmService.fcmToken?.substring(0, 20)}...');
+        }
+      } else {
+        if (kDebugMode) {
+          print('⚠️ FCM Service initialization failed');
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ FCM Service initialization error: $e');
+        print('🔄 App will continue without push notifications');
+      }
+    }
+  }
+
+  /// Handle notification tap for deep linking
+  void _handleNotificationTapped(Map<String, dynamic> data) {
+    if (kDebugMode) {
+      print('🔗 Notification tapped with data: $data');
+    }
+
+    // Extract deep link URL from notification data
+    final deepLinkUrl = data['deep_link_url'] as String?;
+
+    if (deepLinkUrl != null && deepLinkUrl.isNotEmpty) {
+      _handleDeepLink(deepLinkUrl);
+    }
+
+    // TODO: Implement additional deep linking logic
+    // Examples:
+    // - Navigate to specific product: /product/{id}
+    // - Open order details: /orders/{id}
+    // - Show customer portal: /customer
+    // - Show seller dashboard: /seller
+  }
+
+  /// Handle deep link navigation
+  void _handleDeepLink(String deepLinkUrl) {
+    if (kDebugMode) {
+      print('🔗 Processing deep link: $deepLinkUrl');
+    }
+
+    // TODO: Implement deep link routing
+    // This would typically use Navigator or a routing package
+    // to navigate to the appropriate screen based on the URL
   }
 
   @override
