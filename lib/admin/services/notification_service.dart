@@ -596,9 +596,12 @@ class NotificationService {
           ? 'phone_number'
           : 'contact_phone';
 
+      // Select appropriate name field based on table
+      final nameField = table == 'customers' ? 'full_name' : 'seller_name';
+
       final response = await _supabase
           .from(table)
-          .select('id, full_name, seller_name, $phoneField')
+          .select('id, $nameField, $phoneField')
           .eq('id', recipientId)
           .maybeSingle();
 

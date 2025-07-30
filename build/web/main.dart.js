@@ -87002,30 +87002,31 @@ case 6:case 1:return A.D(q,r)
 case 2:return A.C(o.at(-1),r)}})
 return A.E($async$te,r)},
 yA(a,b){return this.aan(a,b)},
-aan(a,b){var s=0,r=A.F(t.P),q,p=2,o=[],n=this,m,l,k,j,i,h,g
+aan(a,b){var s=0,r=A.F(t.P),q,p=2,o=[],n=this,m,l,k,j,i,h,g,f
 var $async$yA=A.B(function(c,d){if(c===1){o.push(d)
 s=p}while(true)switch(s){case 0:p=4
-i=b==="customer"
-m=i?"customers":"sellers"
-l=i?"phone_number":"contact_phone"
+h=b==="customer"
+m=h?"customers":"sellers"
+l=h?"phone_number":"contact_phone"
+k=J.d(m,"customers")?"full_name":"seller_name"
 s=7
-return A.q(n.a.f9(m).hv("id, full_name, seller_name, "+A.j(l)).e6("id",a).Yj(),$async$yA)
-case 7:k=d
-if(k==null){i=A.M(["success",!1,"message",b[0].toUpperCase()+B.c.cb(b,1)+" not found"],t.N,t.z)
-q=i
+return A.q(n.a.f9(m).hv("id, "+A.j(k)+", "+A.j(l)).e6("id",a).Yj(),$async$yA)
+case 7:j=d
+if(j==null){h=A.M(["success",!1,"message",b[0].toUpperCase()+B.c.cb(b,1)+" not found"],t.N,t.z)
+q=h
 s=1
-break}i=A.M(["success",!0,"recipient",k],t.N,t.z)
-q=i
+break}h=A.M(["success",!0,"recipient",j],t.N,t.z)
+q=h
 s=1
 break
 p=2
 s=6
 break
 case 4:p=3
-g=o.pop()
-j=A.Y(g)
-i=A.M(["success",!1,"message","Failed to get recipient data: "+J.bE(j)],t.N,t.z)
-q=i
+f=o.pop()
+i=A.Y(f)
+h=A.M(["success",!1,"message","Failed to get recipient data: "+J.bE(i)],t.N,t.z)
+q=h
 s=1
 break
 s=6
