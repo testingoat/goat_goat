@@ -816,7 +816,23 @@ class NotificationService {
   }) async {
     try {
       print('📋 Getting recent notifications...');
+      print('📋 Limit: $limit, Offset: $offset');
+      print('📋 Filters - Status: $deliveryStatus, Type: $notificationType');
 
+      // First, try a simple query to see if we can get basic data
+      final simpleResponse = await _supabase
+          .from('notification_logs')
+          .select('*')
+          .order('created_at', ascending: false)
+          .limit(limit);
+
+      print('📋 Simple query returned ${simpleResponse.length} records');
+
+      if (simpleResponse.isNotEmpty) {
+        print('📋 Sample record: ${simpleResponse.first}');
+      }
+
+      // Now try the complex query with joins
       var query = _supabase.from('notification_logs').select('''
         *,
         customers(id, full_name, phone_number),
@@ -835,18 +851,162 @@ class NotificationService {
           .order('created_at', ascending: false)
           .range(offset, offset + limit - 1);
 
+      print('📋 Complex query returned ${response.length} records');
+
       return {
         'success': true,
         'notifications': response,
         'total_count': response.length,
         'has_more': response.length == limit,
+        'debug_info': {
+          'simple_count': simpleResponse.length,
+          'complex_count': response.length,
+          'query_filters': {
+            'delivery_status': deliveryStatus,
+            'notification_type': notificationType,
+          },
+        },
       };
     } catch (e) {
       print('❌ Error getting recent notifications: $e');
+      print('❌ Stack trace: ${StackTrace.current}');
       return {
         'success': false,
         'message': 'Failed to retrieve notifications: ${e.toString()}',
         'notifications': [],
+        'error_details': e.toString(),
+      };
+    }
+  }
+
+  // ===== TEMPLATE NOTIFICATION METHODS =====
+
+  /// Send notification using a template
+  Future<Map<String, dynamic>> sendTemplateNotification({
+    required String templateId,
+    required String targetUserId,
+    required String targetUserType,
+    required Map<String, String> templateVariables,
+  }) async {
+    try {
+      print('📧 Sending template notification...');
+      print('📧 Template ID: $templateId');
+      print('📧 Target: $targetUserId ($targetUserType)');
+      print('📧 Variables: $templateVariables');
+
+      // Get the template
+      final templateResponse = await _supabase
+          .from('notification_templates')
+          .select('*')
+          .eq('id', templateId)
+          .eq('is_active', true)
+          .maybeSingle();
+
+      if (templateResponse == null) {
+        return {'success': false, 'message': 'Template not found or inactive'};
+      }
+
+      // Process template variables
+      String title = templateResponse['title_template'] ?? '';
+      String message = templateResponse['message_template'] ?? '';
+
+      // Replace variables in title and message
+      templateVariables.forEach((key, value) {
+        title = title.replaceAll('{$key}', value);
+        message = message.replaceAll('{$key}', value);
+      });
+
+      // Determine target based on type
+      String? recipientId;
+      String? phoneNumber;
+      String recipientType = 'customer'; // default
+
+      if (targetUserType == 'phone') {
+        phoneNumber = targetUserId;
+        // Try to find customer by phone
+        final customerResponse = await _supabase
+            .from('customers')
+            .select('id')
+            .eq('phone_number', '+91$targetUserId')
+            .maybeSingle();
+
+        if (customerResponse != null) {
+          recipientId = customerResponse['id'];
+        }
+      } else if (targetUserType == 'customer_id') {
+        recipientId = targetUserId;
+        recipientType = 'customer';
+
+        // Get phone number
+        final customerResponse = await _supabase
+            .from('customers')
+            .select('phone_number')
+            .eq('id', targetUserId)
+            .maybeSingle();
+
+        if (customerResponse != null) {
+          phoneNumber = customerResponse['phone_number'];
+        }
+      } else if (targetUserType == 'seller_id') {
+        recipientId = targetUserId;
+        recipientType = 'seller';
+
+        // Get phone number
+        final sellerResponse = await _supabase
+            .from('sellers')
+            .select('contact_phone')
+            .eq('id', targetUserId)
+            .maybeSingle();
+
+        if (sellerResponse != null) {
+          phoneNumber = sellerResponse['contact_phone'];
+        }
+      }
+
+      if (phoneNumber == null) {
+        return {
+          'success': false,
+          'message': 'Could not determine recipient phone number',
+        };
+      }
+
+      // Send SMS notification using existing method
+      final smsResult = await sendSMSNotification(
+        recipientId: recipientId ?? 'unknown',
+        recipientType: recipientType,
+        templateId: templateId,
+        variables: templateVariables,
+      );
+
+      if (!smsResult['success']) {
+        return smsResult;
+      }
+
+      // Try to send push notification as well if FCM token exists
+      if (recipientId != null) {
+        try {
+          await sendPushNotification(
+            title: title,
+            body: message,
+            targetUserId: recipientId,
+            targetUserType: recipientType,
+          );
+        } catch (e) {
+          print('⚠️ Push notification failed, but SMS succeeded: $e');
+        }
+      }
+
+      return {
+        'success': true,
+        'message': 'Template notification sent successfully',
+        'notification_id': smsResult['notification_id'],
+        'delivery_methods': ['sms'],
+      };
+    } catch (e) {
+      print('❌ Error sending template notification: $e');
+      return {
+        'success': false,
+        'message': 'Failed to send template notification: ${e.toString()}',
       };
     }
   }
@@ -894,6 +1054,8 @@ class NotificationService {
       );
 
       if (response.status == 200) {
+        final responseData = response.data as Map<String, dynamic>;
+
         await _adminAuth.logAction(
           action: 'send_push_notification',
           resourceType: 'notification',
@@ -903,18 +1065,33 @@ class NotificationService {
             'target_user_type': targetUserType,
             'topic': topic,
             'has_deep_link': deepLinkUrl != null,
+            'test_mode': responseData['delivery_info']?['test_mode'] ?? false,
+            'message_id': responseData['message_id'],
           },
         );
 
+        // Check if it's test mode and provide appropriate feedback
+        String successMessage =
+            responseData['message'] ?? 'Push notification sent successfully';
+
+        if (responseData['delivery_info']?['test_mode'] == true) {
+          successMessage +=
+              '\n\n⚠️ Note: FCM is in test mode. Configure Firebase Cloud Messaging for production use.';
+        }
+
         return {
           'success': true,
-          'message': 'Push notification sent successfully',
-          'data': response.data,
+          'message': successMessage,
+          'data': responseData,
+          'test_mode': responseData['delivery_info']?['test_mode'] ?? false,
+          'warning': responseData['warning'],
         };
       } else {
         return {
           'success': false,
-          'message': 'Failed to send push notification: ${response.status}',
+          'message':
+              'Failed to send push notification: HTTP ${response.status}',
+          'error_details': response.data,
         };
       }
     } catch (e) {

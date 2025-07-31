@@ -962,29 +962,68 @@ class _NotificationsScreenState extends State<NotificationsScreen>
   void _showTemplateNotificationDialog() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Send Template-Based Notification'),
-        content: const SizedBox(
-          width: 400,
-          child: Text(
-            'Template-based notification interface will be implemented here',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              // TODO: Implement template-based sending
-            },
-            child: const Text('Send'),
-          ),
-        ],
+      builder: (context) => _TemplateNotificationDialog(
+        templates: _templates,
+        onSend: _sendTemplateNotification,
       ),
     );
+  }
+
+  Future<void> _sendTemplateNotification({
+    required String templateId,
+    required String targetType,
+    required String targetValue,
+    required Map<String, String> variables,
+  }) async {
+    try {
+      setState(() {
+        _isLoading = true;
+      });
+
+      final result = await _notificationService.sendTemplateNotification(
+        templateId: templateId,
+        targetUserId: targetValue,
+        targetUserType: targetType,
+        templateVariables: variables,
+      );
+
+      if (result['success']) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Template notification sent successfully!'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+        await _loadData(); // Refresh data
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result['message'] ?? 'Failed to send notification'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error sending template notification: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   // ===== TEMPLATE MANAGEMENT METHODS =====
@@ -1877,6 +1916,278 @@ class _PushNotificationDialogState extends State<_PushNotificationDialog> {
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
+      }
+    }
+  }
+}
+
+// Template Notification Dialog Widget
+class _TemplateNotificationDialog extends StatefulWidget {
+  final List<Map<String, dynamic>> templates;
+  final Function({
+    required String templateId,
+    required String targetType,
+    required String targetValue,
+    required Map<String, String> variables,
+  })
+  onSend;
+
+  const _TemplateNotificationDialog({
+    required this.templates,
+    required this.onSend,
+  });
+
+  @override
+  State<_TemplateNotificationDialog> createState() =>
+      _TemplateNotificationDialogState();
+}
+
+class _TemplateNotificationDialogState
+    extends State<_TemplateNotificationDialog> {
+  String? _selectedTemplateId;
+  String _targetType = 'phone';
+  final _targetController = TextEditingController();
+  final Map<String, TextEditingController> _variableControllers = {};
+  bool _isLoading = false;
+
+  Map<String, dynamic>? get _selectedTemplate {
+    if (_selectedTemplateId == null) return null;
+    return widget.templates.firstWhere(
+      (template) => template['id'] == _selectedTemplateId,
+      orElse: () => {},
+    );
+  }
+
+  List<String> get _templateVariables {
+    final template = _selectedTemplate;
+    if (template == null) return [];
+
+    final variables = template['template_variables'] as List<dynamic>?;
+    return variables?.cast<String>() ?? [];
+  }
+
+  @override
+  void dispose() {
+    _targetController.dispose();
+    for (final controller in _variableControllers.values) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Send Template-Based Notification'),
+      content: SizedBox(
+        width: 500,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Template Selection
+              const Text(
+                'Select Template:',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<String>(
+                value: _selectedTemplateId,
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  hintText: 'Choose a template',
+                ),
+                items: widget.templates.map((template) {
+                  return DropdownMenuItem<String>(
+                    value: template['id'],
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(template['template_name'] ?? 'Unnamed Template'),
+                        Text(
+                          template['template_type'] ?? 'Unknown Type',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    _selectedTemplateId = value;
+                    _variableControllers.clear();
+                  });
+                },
+              ),
+
+              if (_selectedTemplate != null) ...[
+                const SizedBox(height: 16),
+
+                // Template Preview
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.grey[300]!),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Template Preview:',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey[700],
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Title: ${_selectedTemplate!['title_template'] ?? 'No title'}',
+                      ),
+                      Text(
+                        'Message: ${_selectedTemplate!['message_template'] ?? 'No message'}',
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // Target Selection
+                const Text(
+                  'Send To:',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 1,
+                      child: DropdownButtonFormField<String>(
+                        value: _targetType,
+                        decoration: const InputDecoration(
+                          border: OutlineInputBorder(),
+                        ),
+                        items: const [
+                          DropdownMenuItem(
+                            value: 'phone',
+                            child: Text('Phone Number'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'customer_id',
+                            child: Text('Customer ID'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'seller_id',
+                            child: Text('Seller ID'),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          setState(() {
+                            _targetType = value!;
+                          });
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      flex: 2,
+                      child: TextFormField(
+                        controller: _targetController,
+                        decoration: InputDecoration(
+                          border: const OutlineInputBorder(),
+                          hintText: _targetType == 'phone'
+                              ? 'Enter phone number (e.g., 6362924334)'
+                              : 'Enter ${_targetType.replaceAll('_', ' ')}',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                // Template Variables
+                if (_templateVariables.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Template Variables:',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  ..._templateVariables.map((variable) {
+                    _variableControllers[variable] ??= TextEditingController();
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: TextFormField(
+                        controller: _variableControllers[variable],
+                        decoration: InputDecoration(
+                          border: const OutlineInputBorder(),
+                          labelText: variable,
+                          hintText: 'Enter value for $variable',
+                        ),
+                      ),
+                    );
+                  }),
+                ],
+              ],
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed:
+              _isLoading ||
+                  _selectedTemplateId == null ||
+                  _targetController.text.isEmpty
+              ? null
+              : _sendNotification,
+          child: _isLoading
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('Send'),
+        ),
+      ],
+    );
+  }
+
+  void _sendNotification() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final variables = <String, String>{};
+      for (final entry in _variableControllers.entries) {
+        variables[entry.key] = entry.value.text;
+      }
+
+      await widget.onSend(
+        templateId: _selectedTemplateId!,
+        targetType: _targetType,
+        targetValue: _targetController.text,
+        variables: variables,
+      );
+
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
       }
     }
   }
