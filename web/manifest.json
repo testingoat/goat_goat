@@ -1,13 +1,14 @@
 {
-    "name": "goat_goat",
-    "short_name": "goat_goat",
-    "start_url": ".",
+    "name": "Goat Goat Admin Panel",
+    "short_name": "Goat Admin",
+    "start_url": "/",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
-    "orientation": "portrait-primary",
+    "background_color": "#059669",
+    "theme_color": "#059669",
+    "description": "Goat Goat Admin Panel - Manage notifications, users, and system settings",
+    "orientation": "any",
     "prefer_related_applications": false,
+    "scope": "/",
     "icons": [
         {
             "src": "icons/Icon-192.png",
