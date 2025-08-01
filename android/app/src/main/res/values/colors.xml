@@ -4,4 +4,7 @@
     <color name="notification_color">#047857</color> <!-- emerald-700 -->
     <color name="primary_green">#065f46</color> <!-- emerald-800 -->
     <color name="accent_green">#10b981</color> <!-- emerald-500 -->
+    
+    <!-- Material Design colors -->
+    <color name="colorOnPrimary">#FFFFFF</color> <!-- White color for on-primary elements -->
 </resources>

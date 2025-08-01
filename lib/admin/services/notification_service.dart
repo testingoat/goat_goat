@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/foundation.dart';
 import '../../services/otp_service_fallback.dart';
 import 'admin_auth_service.dart';
 
@@ -20,10 +21,10 @@ class NotificationService {
   static const bool _enableTemplateManagement = true;
   static const bool _enableAnalytics = true;
 
-  // FCM Push Notification feature flags
-  static const bool _enablePushNotifications = true;
-  static const bool _enableTopicNotifications = true;
-  static const bool _enableTargetedNotifications = true;
+  // FCM Push Notification feature flags (disabled for web builds)
+  static const bool _enablePushNotifications = !kIsWeb;
+  static const bool _enableTopicNotifications = !kIsWeb;
+  static const bool _enableTargetedNotifications = !kIsWeb;
 
   // ===== TEMPLATE MANAGEMENT =====
 
