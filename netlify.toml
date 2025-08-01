@@ -4,20 +4,12 @@
 # This file configures the build and deployment settings for the Flutter Web admin panel
 
 [build]
-  # Using pre-built Flutter web files (built locally)
-  # No build command needed - Netlify will serve static files from build/web
-  command = "echo 'Deploying pre-built Flutter web admin panel'"
-
-  # Output directory (Flutter web builds to build/web)
+  # Static site deployment - no build process needed
+  # Flutter web files are pre-built and committed to repository
   publish = "build/web"
 
-  # Environment variables for build
-  [build.environment]
-    FLUTTER_VERSION = "3.16.0"
-    SUPABASE_URL = "https://oaynfzqjielnsipttzbs.supabase.co"
-    SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9heW5menFqaWVsbnNpcHR0emJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzI2MjU4NzEsImV4cCI6MjA0ODIwMTg3MX0.VYyJqUOHlnyx7Qs8Qs8Qs8Qs8Qs8Qs8Qs8Qs8Qs8Qs8"
-    ADMIN_URL = "https://admin.goatgoat.info"
-    ADMIN_ENVIRONMENT = "production"
+  # Skip build process entirely
+  command = ""
 
 # Redirect rules for SPA (Single Page Application)
 [[redirects]]
