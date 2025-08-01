@@ -285,7 +285,7 @@ class _CustomerProductCatalogScreenState
       padding: const EdgeInsets.all(16),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        childAspectRatio: 0.75, // Optimized for better content fit
+        childAspectRatio: 0.72, // Further optimized to prevent any overflow
         crossAxisSpacing: 16,
         mainAxisSpacing: 16,
       ),
@@ -334,8 +334,8 @@ class _CustomerProductCatalogScreenState
 
           // Product Details - Fixed height instead of Expanded
           Container(
-            height: 120, // Fixed height to prevent overflow
-            padding: const EdgeInsets.all(10), // Reduced padding
+            height: 115, // Slightly reduced height to prevent overflow
+            padding: const EdgeInsets.all(8), // Further reduced padding
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -380,7 +380,7 @@ class _CustomerProductCatalogScreenState
                 // Add to Cart Button - More compact
                 SizedBox(
                   width: double.infinity,
-                  height: 32, // Fixed height for button
+                  height: 28, // Reduced height for button
                   child: ElevatedButton(
                     onPressed: () => _addToCart(product),
                     style: ElevatedButton.styleFrom(
