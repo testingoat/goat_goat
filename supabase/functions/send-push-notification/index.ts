@@ -78,8 +78,11 @@ async function createJWT(serviceAccount: ServiceAccountKey): Promise<string> {
 
 async function getAccessToken(serviceAccount: ServiceAccountKey): Promise<string> {
   try {
+    console.log('🔑 Starting JWT creation...');
     const jwt = await createJWT(serviceAccount);
+    console.log('🔑 JWT created successfully, length:', jwt.length);
 
+    console.log('🌐 Requesting OAuth token from Google...');
     const response = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: {
@@ -91,7 +94,9 @@ async function getAccessToken(serviceAccount: ServiceAccountKey): Promise<string
       }),
     });
 
+    console.log('🌐 OAuth response status:', response.status);
     const data = await response.json();
+    console.log('🌐 OAuth response data:', data);
 
     if (!response.ok) {
       console.error('❌ Token request failed:', data);
@@ -123,6 +128,28 @@ serve(async (req) => {
     const FIREBASE_SERVICE_ACCOUNT = Deno.env.get('FIREBASE_SERVICE_ACCOUNT')
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL')
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+    
+    // Debug: Log all environment variables
+    console.log('🔍 DEBUG - Environment Variables Status:')
+    console.log('🔍 FCM_SERVER_KEY:', FCM_SERVER_KEY ? 'PRESENT' : 'MISSING')
+    console.log('🔍 FIREBASE_SERVICE_ACCOUNT:', FIREBASE_SERVICE_ACCOUNT ? 'PRESENT' : 'MISSING')
+    console.log('🔍 SUPABASE_URL:', SUPABASE_URL ? 'PRESENT' : 'MISSING')
+    console.log('🔍 SUPABASE_SERVICE_ROLE_KEY:', SUPABASE_SERVICE_ROLE_KEY ? 'PRESENT' : 'MISSING')
+    
+    // Debug: Log Firebase Service Account details if present
+    if (FIREBASE_SERVICE_ACCOUNT) {
+      console.log('🔍 DEBUG - Firebase Service Account Length:', FIREBASE_SERVICE_ACCOUNT.length)
+      console.log('🔍 DEBUG - Firebase Service Account Preview:', FIREBASE_SERVICE_ACCOUNT.substring(0, 100) + '...')
+      try {
+        const parsed = JSON.parse(FIREBASE_SERVICE_ACCOUNT)
+        console.log('🔍 DEBUG - Parsed Successfully:', true)
+        console.log('🔍 DEBUG - Project ID:', parsed.project_id)
+        console.log('🔍 DEBUG - Client Email:', parsed.client_email)
+        console.log('🔍 DEBUG - Private Key Present:', !!parsed.private_key)
+      } catch (e) {
+        console.log('🔍 DEBUG - JSON Parse Error:', e.message)
+      }
+    }
 
     // Parse Firebase service account if available
     let serviceAccount: ServiceAccountKey | null = null
@@ -135,6 +162,8 @@ serve(async (req) => {
         console.log('🔥 Using Firebase v1 API with service account')
         console.log('🔥 Project ID:', serviceAccount.project_id)
         console.log('🔥 Client Email:', serviceAccount.client_email)
+        console.log('🔥 Private Key Length:', serviceAccount.private_key?.length || 'undefined')
+        console.log('🔥 Service Account Keys:', Object.keys(serviceAccount))
       } catch (e) {
         console.warn('⚠️ Invalid Firebase service account JSON, falling back to legacy API')
         console.warn('Error:', e)
@@ -475,13 +504,34 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('❌ FCM Function Error:', error)
+    console.error('❌ FCM Function Error Details:', {
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+      toString: error.toString()
+    })
+    
+    // Enhanced error response with debugging information
+    const errorResponse = {
+      success: false,
+      error: error.message,
+      message: 'Failed to send push notification',
+      debug_info: {
+        environment_variables: {
+          FCM_SERVER_KEY: FCM_SERVER_KEY ? 'PRESENT' : 'MISSING',
+          FIREBASE_SERVICE_ACCOUNT: FIREBASE_SERVICE_ACCOUNT ? 'PRESENT' : 'MISSING',
+          SUPABASE_URL: SUPABASE_URL ? 'PRESENT' : 'MISSING',
+          SUPABASE_SERVICE_ROLE_KEY: SUPABASE_SERVICE_ROLE_KEY ? 'PRESENT' : 'MISSING'
+        },
+        api_mode: useV1API ? 'v1' : 'legacy',
+        service_account_parsed: serviceAccount ? true : false,
+        error_type: error.name,
+        error_full: error.toString()
+      }
+    }
     
     return new Response(
-      JSON.stringify({
-        success: false,
-        error: error.message,
-        message: 'Failed to send push notification',
-      }),
+      JSON.stringify(errorResponse),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500,
