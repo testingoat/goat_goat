@@ -2,8 +2,8 @@
 // This file is required for Firebase Cloud Messaging to work in web browsers
 
 // Import Firebase scripts for service worker
-importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js');
-importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-messaging-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/10.13.0/firebase-messaging-compat.js');
 
 // Firebase configuration
 const firebaseConfig = {
