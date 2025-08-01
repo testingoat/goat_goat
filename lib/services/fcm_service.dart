@@ -241,6 +241,7 @@ class FCMService {
       // For now, just log the token
       if (kDebugMode) {
         print('📝 FCM: Token ready for database storage');
+        print('📝 FCM: Token: ${_fcmToken!.substring(0, 50)}...');
       }
     } catch (e) {
       if (kDebugMode) {

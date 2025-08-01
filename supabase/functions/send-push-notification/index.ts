@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { create, getNumericDate } from "https://deno.land/x/djwt@v2.8/mod.ts"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -10,6 +9,55 @@ const corsHeaders = {
 // Firebase HTTP v1 API configuration
 const FIREBASE_SCOPE = 'https://www.googleapis.com/auth/firebase.messaging'
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token'
+
+/**
+ * Base64 URL encode
+ */
+function base64UrlEncode(str: string): string {
+  return btoa(str)
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '');
+}
+
+/**
+ * Create JWT manually using Web Crypto API
+ */
+async function createJWT(header: any, payload: any, privateKey: string): Promise<string> {
+  const encodedHeader = base64UrlEncode(JSON.stringify(header));
+  const encodedPayload = base64UrlEncode(JSON.stringify(payload));
+  const data = `${encodedHeader}.${encodedPayload}`;
+
+  // Convert PEM to binary
+  const pemHeader = "-----BEGIN PRIVATE KEY-----";
+  const pemFooter = "-----END PRIVATE KEY-----";
+  const pemContents = privateKey.replace(pemHeader, "").replace(pemFooter, "").replace(/\s/g, "");
+  const binaryDer = Uint8Array.from(atob(pemContents), c => c.charCodeAt(0));
+
+  // Import the key
+  const cryptoKey = await crypto.subtle.importKey(
+    "pkcs8",
+    binaryDer,
+    {
+      name: "RSASSA-PKCS1-v1_5",
+      hash: "SHA-256",
+    },
+    false,
+    ["sign"]
+  );
+
+  // Sign the data
+  const signature = await crypto.subtle.sign(
+    "RSASSA-PKCS1-v1_5",
+    cryptoKey,
+    new TextEncoder().encode(data)
+  );
+
+  // Encode signature
+  const encodedSignature = base64UrlEncode(String.fromCharCode(...new Uint8Array(signature)));
+
+  return `${data}.${encodedSignature}`;
+}
 
 /**
  * Generate OAuth2 access token using Firebase service account credentials
@@ -30,6 +78,10 @@ async function getAccessToken(serviceAccount: any): Promise<string> {
 
     // Create JWT assertion for OAuth2
     const now = Math.floor(Date.now() / 1000)
+    const header = {
+      alg: "RS256",
+      typ: "JWT"
+    }
     const payload = {
       iss: serviceAccount.client_email,
       scope: FIREBASE_SCOPE,
@@ -43,13 +95,15 @@ async function getAccessToken(serviceAccount: any): Promise<string> {
     // Create and sign JWT with error handling
     let jwt
     try {
-      jwt = await create(
-        { alg: "RS256", typ: "JWT" },
-        payload,
-        privateKey
-      )
+      console.log('🔐 Private key length:', privateKey.length)
+      console.log('🔐 Private key starts with:', privateKey.substring(0, 50))
+
+      jwt = await createJWT(header, payload, privateKey)
+
+      console.log('✅ JWT created successfully')
     } catch (jwtError) {
       console.error('❌ JWT creation failed:', jwtError)
+      console.error('❌ Error details:', JSON.stringify(jwtError, null, 2))
       throw new Error(`JWT creation failed: ${jwtError.message}. Check private key format.`)
     }
 
@@ -121,7 +175,13 @@ serve(async (req) => {
     // Parse and validate service account JSON
     let serviceAccount
     try {
+      console.log('🔍 Parsing service account JSON...')
       serviceAccount = JSON.parse(FIREBASE_SERVICE_ACCOUNT_JSON)
+
+      console.log('✅ Service account parsed successfully')
+      console.log('🔍 Project ID:', serviceAccount.project_id)
+      console.log('🔍 Client email:', serviceAccount.client_email)
+      console.log('🔍 Private key length:', serviceAccount.private_key?.length || 'undefined')
 
       // Validate required fields
       const requiredFields = ['type', 'project_id', 'private_key', 'client_email']
@@ -134,6 +194,8 @@ serve(async (req) => {
       if (serviceAccount.type !== 'service_account') {
         throw new Error('Invalid service account type. Expected "service_account"')
       }
+
+      console.log('✅ Service account validation passed')
     } catch (parseError) {
       console.error('❌ Invalid Firebase service account JSON:', parseError)
       return new Response(

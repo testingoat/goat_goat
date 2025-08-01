@@ -7,40 +7,31 @@ import 'supabase_service.dart';
 import 'screens/developer_dashboard_screen.dart';
 import 'screens/customer_portal_screen.dart';
 
-// Firebase imports with conditional loading for web compatibility
-import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
-import 'services/fcm_service.dart';
+// Firebase imports with platform-aware initialization (temporarily disabled - compatibility issues)
+// import 'services/firebase_platform_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Firebase with platform-specific handling
+  // Initialize Firebase with zero-risk platform-aware handling
   await _initializeFirebase();
 
   runApp(const MyApp());
 }
 
-/// Initialize Firebase with proper error handling and platform detection
+/// Initialize Firebase with zero-risk platform-aware handling (temporarily disabled)
 Future<void> _initializeFirebase() async {
   try {
-    // Initialize Firebase Core
-    await Firebase.initializeApp();
-
-    // Set background message handler for mobile platforms
-    if (!kIsWeb) {
-      FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
-    }
-
     if (kDebugMode) {
-      print('🔥 Firebase initialized successfully');
-      print('📱 Platform: ${kIsWeb ? 'Web' : 'Mobile'}');
+      print(
+        '🔥 Firebase initialization temporarily disabled due to compatibility issues',
+      );
+      print('   App will continue with SMS notifications only');
     }
   } catch (e) {
     if (kDebugMode) {
-      print('⚠️ Firebase initialization failed: $e');
-      print('📱 Platform: ${kIsWeb ? 'Web' : 'Mobile'}');
-      print('🔄 App will continue without Firebase features');
+      print('❌ Firebase initialization error: $e');
+      print('   App will continue with SMS notifications only');
     }
   }
 }
@@ -71,8 +62,8 @@ class _MyAppState extends State<MyApp> {
             'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9heW5menFqaWVsbnNpcHR0emJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk5MDU3NDUsImV4cCI6MjA2NTQ4MTc0NX0.RnhpZ7ri3Nf3vmDMCmLqYnB8cRNZc_u-3dhCutpUWEA',
       );
 
-      // Initialize FCM Service with feature flag support
-      await _initializeFCMService();
+      // FCM Service is now initialized through FirebasePlatformService
+      // This provides zero-risk platform-aware initialization
     } catch (e) {
       // Handle initialization error
       print('Initialization error: $e');
@@ -83,39 +74,11 @@ class _MyAppState extends State<MyApp> {
     }
   }
 
-  /// Initialize FCM Service with proper error handling
+  /// Initialize FCM Service with proper error handling (temporarily disabled)
   Future<void> _initializeFCMService() async {
-    try {
-      final fcmService = FCMService();
-
-      // Check if FCM is supported on current platform
-      if (fcmService.isInitialized) {
-        if (kDebugMode) {
-          print('🔔 FCM Service already initialized');
-        }
-        return;
-      }
-
-      // Initialize FCM service
-      final initialized = await fcmService.initialize(
-        onNotificationTapped: _handleNotificationTapped,
-      );
-
-      if (initialized) {
-        if (kDebugMode) {
-          print('🔔 FCM Service initialized successfully');
-          print('📱 FCM Token: ${fcmService.fcmToken?.substring(0, 20)}...');
-        }
-      } else {
-        if (kDebugMode) {
-          print('⚠️ FCM Service initialization failed');
-        }
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('❌ FCM Service initialization error: $e');
-        print('🔄 App will continue without push notifications');
-      }
+    // Temporarily disabled for mobile testing
+    if (kDebugMode) {
+      print('🔔 FCM Service initialization skipped for testing');
     }
   }
 

@@ -29,11 +29,61 @@ if ($LASTEXITCODE -ne 0) {
 }
 Write-Host "✅ Flutter build completed successfully" -ForegroundColor Green
 
-# Step 3: Copy Netlify configuration files
-Write-Host "📋 Copying Netlify configuration..." -ForegroundColor Yellow
-Copy-Item "_headers" "build/web/_headers" -Force
-Copy-Item "_redirects" "build/web/_redirects" -Force
-Write-Host "✅ Netlify configuration copied" -ForegroundColor Green
+# Step 3: Create/Update Netlify configuration files with MIME type fixes
+Write-Host "📋 Creating Netlify configuration with MIME type fixes..." -ForegroundColor Yellow
+
+# Create _headers file with proper MIME types - CRITICAL FOR PREVENTING RECURRING ISSUES
+$headersContent = @"
+# Netlify Headers Configuration for Flutter Web - PREVENTS MIME TYPE ERRORS
+/*.js
+  Content-Type: application/javascript; charset=utf-8
+  Cache-Control: public, max-age=31536000, immutable
+
+/*.dart.js
+  Content-Type: application/javascript; charset=utf-8
+  Cache-Control: public, max-age=31536000, immutable
+
+/main.dart.js
+  Content-Type: application/javascript; charset=utf-8
+  Cache-Control: public, max-age=31536000, immutable
+
+/flutter_service_worker.js
+  Content-Type: application/javascript; charset=utf-8
+  Cache-Control: public, max-age=0, must-revalidate
+
+/flutter_bootstrap.js
+  Content-Type: application/javascript; charset=utf-8
+  Cache-Control: public, max-age=31536000, immutable
+
+/*.css
+  Content-Type: text/css; charset=utf-8
+  Cache-Control: public, max-age=31536000, immutable
+
+/*.html
+  Content-Type: text/html; charset=utf-8
+  Cache-Control: public, max-age=0, must-revalidate
+
+/*.json
+  Content-Type: application/json; charset=utf-8
+
+# Security headers
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  X-XSS-Protection: 1; mode=block
+"@
+
+$headersContent | Out-File -FilePath "build/web/_headers" -Encoding UTF8 -Force
+
+# Create _redirects file for SPA routing
+$redirectsContent = @"
+# Redirect rules for Flutter Web SPA
+/*    /index.html   200
+"@
+
+$redirectsContent | Out-File -FilePath "build/web/_redirects" -Encoding UTF8 -Force
+
+Write-Host "✅ Netlify configuration created with MIME type fixes" -ForegroundColor Green
 
 # Step 4: Verify build output
 Write-Host "🔍 Verifying build output..." -ForegroundColor Yellow

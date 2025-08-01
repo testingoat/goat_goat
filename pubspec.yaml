@@ -44,14 +44,14 @@ dependencies:
   # Internationalization and date formatting
   intl: ^0.19.0
 
-  # Firebase dependencies for FCM push notifications (temporarily disabled for web testing)
-  # firebase_core: ^2.15.1
-  # firebase_messaging: ^14.6.7
+  # Firebase dependencies for FCM push notifications (temporarily disabled - compatibility issues)
+  # firebase_core: ^2.24.2
+  # firebase_messaging: ^14.7.10
 
-  # Local notifications for foreground handling (temporarily disabled for web testing)
+  # Local notifications for foreground handling (temporarily disabled - compatibility issues)
   # flutter_local_notifications: ^16.3.2
 
-  # Permission handling for notifications (temporarily disabled for web testing)
+  # Permission handling for notifications (temporarily disabled - compatibility issues)
   # permission_handler: ^11.2.0
 
 dev_dependencies:

@@ -31,6 +31,11 @@ class _NotificationsScreenState extends State<NotificationsScreen>
   bool _isLoading = true;
   String? _error;
 
+  // History filtering state
+  String _historyTypeFilter = 'all';
+  String _historyStatusFilter = 'all';
+  List<Map<String, dynamic>> _filteredNotifications = [];
+
   @override
   void initState() {
     super.initState();
@@ -66,6 +71,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
           _recentNotifications = List<Map<String, dynamic>>.from(
             results[1]['notifications'],
           );
+          _applyHistoryFilters();
         }
         if (results[2]['success']) {
           _templates = List<Map<String, dynamic>>.from(results[2]['templates']);
@@ -704,7 +710,10 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                     ),
                   ],
                   onChanged: (value) {
-                    // TODO: Implement filtering
+                    setState(() {
+                      _historyTypeFilter = value ?? 'all';
+                      _applyHistoryFilters();
+                    });
                   },
                 ),
               ),
@@ -722,7 +731,10 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                     DropdownMenuItem(value: 'pending', child: Text('Pending')),
                   ],
                   onChanged: (value) {
-                    // TODO: Implement filtering
+                    setState(() {
+                      _historyStatusFilter = value ?? 'all';
+                      _applyHistoryFilters();
+                    });
                   },
                 ),
               ),
@@ -731,7 +743,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
           const SizedBox(height: 24),
 
           // History List
-          if (_recentNotifications.isEmpty)
+          if (_filteredNotifications.isEmpty)
             _buildEmptyHistoryState()
           else
             _buildHistoryList(),
@@ -1314,9 +1326,9 @@ class _NotificationsScreenState extends State<NotificationsScreen>
     return ListView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      itemCount: _recentNotifications.length,
+      itemCount: _filteredNotifications.length,
       itemBuilder: (context, index) {
-        final notification = _recentNotifications[index];
+        final notification = _filteredNotifications[index];
         return Card(
           margin: const EdgeInsets.only(bottom: 12),
           child: ExpansionTile(
@@ -1441,6 +1453,36 @@ class _NotificationsScreenState extends State<NotificationsScreen>
       default:
         return Icons.notification_important;
     }
+  }
+
+  /// Apply filters to notification history
+  void _applyHistoryFilters() {
+    _filteredNotifications = _recentNotifications.where((notification) {
+      // Filter by type
+      if (_historyTypeFilter != 'all') {
+        final deliveryMethod = notification['delivery_method'] as String?;
+        if (_historyTypeFilter == 'sms' && deliveryMethod != 'sms') {
+          return false;
+        }
+        if (_historyTypeFilter == 'push' && deliveryMethod != 'push') {
+          return false;
+        }
+        if (_historyTypeFilter == 'combined' &&
+            (deliveryMethod != 'sms' && deliveryMethod != 'push')) {
+          return false;
+        }
+      }
+
+      // Filter by status
+      if (_historyStatusFilter != 'all') {
+        final status = notification['delivery_status'] as String?;
+        if (status != _historyStatusFilter) {
+          return false;
+        }
+      }
+
+      return true;
+    }).toList();
   }
 }
 

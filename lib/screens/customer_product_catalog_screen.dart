@@ -285,7 +285,7 @@ class _CustomerProductCatalogScreenState
       padding: const EdgeInsets.all(16),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        childAspectRatio: 0.75,
+        childAspectRatio: 0.85, // Increased from 0.75 to prevent overflow
         crossAxisSpacing: 16,
         mainAxisSpacing: 16,
       ),
