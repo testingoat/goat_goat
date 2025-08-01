@@ -130,12 +130,14 @@ Clipboard/
 *.sqlite3
 *.db
 
-# Certificates
+# Certificates and Firebase Service Accounts
 *.pem
 *.key
 *.crt
 *.p12
 *.jks
+*firebase-adminsdk*.json
+firebase_service_account.json
 
 # Backup files
 *.backup
