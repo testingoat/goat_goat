@@ -285,7 +285,7 @@ class _CustomerProductCatalogScreenState
       padding: const EdgeInsets.all(16),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        childAspectRatio: 0.85, // Increased from 0.75 to prevent overflow
+        childAspectRatio: 0.75, // Optimized for better content fit
         crossAxisSpacing: 16,
         mainAxisSpacing: 16,
       ),
@@ -313,9 +313,9 @@ class _CustomerProductCatalogScreenState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Product Image
+          // Product Image - Reduced height
           Container(
-            height: 120,
+            height: 100, // Reduced from 120 to 100
             decoration: BoxDecoration(
               color: const Color(0xFF059669).withValues(alpha: 0.1),
               borderRadius: const BorderRadius.only(
@@ -324,68 +324,83 @@ class _CustomerProductCatalogScreenState
               ),
             ),
             child: const Center(
-              child: Icon(Icons.fastfood, size: 48, color: Color(0xFF059669)),
+              child: Icon(
+                Icons.fastfood,
+                size: 40,
+                color: Color(0xFF059669),
+              ), // Reduced icon size
             ),
           ),
 
-          // Product Details
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+          // Product Details - Fixed height instead of Expanded
+          Container(
+            height: 120, // Fixed height to prevent overflow
+            padding: const EdgeInsets.all(10), // Reduced padding
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Product Name
+                Text(
+                  product['name'] ?? 'Product',
+                  style: const TextStyle(
+                    fontSize: 14, // Reduced font size
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+
+                // Price
+                Text(
+                  '₹${product['price'] ?? 0}/kg',
+                  style: const TextStyle(
+                    fontSize: 16, // Reduced font size
+                    color: Color(0xFF059669),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 2),
+
+                // Seller name - More compact
+                if (product['sellers'] != null)
                   Text(
-                    product['name'] ?? 'Product',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
-                    maxLines: 2,
+                    'by ${product['sellers']['seller_name']}',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.grey[600],
+                    ), // Reduced font size
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '₹${product['price'] ?? 0}/kg',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      color: Color(0xFF059669),
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  if (product['sellers'] != null)
-                    Text(
-                      'by ${product['sellers']['seller_name']}',
-                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                    ),
-                  const Spacer(),
 
-                  // Add to Cart Button
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () => _addToCart(product),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF059669),
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 8),
+                const Spacer(),
+
+                // Add to Cart Button - More compact
+                SizedBox(
+                  width: double.infinity,
+                  height: 32, // Fixed height for button
+                  child: ElevatedButton(
+                    onPressed: () => _addToCart(product),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF059669),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(6),
                       ),
-                      child: const Text(
-                        'Add to Cart',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                    ),
+                    child: const Text(
+                      'Add to Cart',
+                      style: TextStyle(
+                        fontSize: 11, // Reduced font size
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ],
