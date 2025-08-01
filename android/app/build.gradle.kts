@@ -3,8 +3,8 @@ plugins {
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
-    // Firebase plugin for FCM support (temporarily disabled - compatibility issues)
-    // id("com.google.gms.google-services")
+    // Firebase plugin for FCM support
+    id("com.google.gms.google-services")
 }
 
 android {

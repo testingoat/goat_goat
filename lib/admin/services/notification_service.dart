@@ -998,6 +998,68 @@ class NotificationService {
 
   /// Check if targeted notifications are enabled
   bool get isTargetedNotificationsEnabled => _enableTargetedNotifications;
+  /// Send combined SMS + Push notification
+  Future<Map<String, dynamic>> sendCombinedNotification({
+    required String title,
+    required String body,
+    required String recipientId,
+    required String recipientType, // 'customer' or 'seller'
+    String? templateId,
+    Map<String, dynamic>? variables,
+    String? deepLinkUrl,
+  }) async {
+    try {
+      final adminId = _adminAuth.currentAdminId;
+      if (adminId == null) {
+        return {'success': false, 'message': 'Admin authentication required'};
+      }
+
+      print('📱📡 Sending combined SMS + Push notification to $recipientType: $recipientId');
+
+      // Send SMS notification
+      final smsResult = await sendSMSNotification(
+        recipientId: recipientId,
+        recipientType: recipientType,
+        templateId: templateId ?? '',
+        variables: variables ?? {},
+      );
+
+      // Send push notification
+      final pushResult = await sendTargetedPushNotification(
+        title: title,
+        body: body,
+        targetUserId: recipientId,
+        targetUserType: recipientType,
+        data: variables ?? {},
+        deepLinkUrl: deepLinkUrl,
+      );
+
+      await _adminAuth.logAction(
+        action: 'send_combined_notification',
+        resourceType: 'notification',
+        metadata: {
+          'recipient_type': recipientType,
+          'recipient_id': recipientId,
+          'sms_success': smsResult['success'],
+          'push_success': pushResult['success'],
+          'has_deep_link': deepLinkUrl != null,
+        },
+      );
+
+      return {
+        'success': smsResult['success'] || pushResult['success'],
+        'message': 'Combined notification sent',
+        'sms_result': smsResult,
+        'push_result': pushResult,
+      };
+    } catch (e) {
+      print('❌ Error sending combined notification: $e');
+      return {
+        'success': false,
+        'message': 'Failed to send combined notification: ${e.toString()}',
+      };
+    }
+  }
 }
 
 extension StringExtension on String {

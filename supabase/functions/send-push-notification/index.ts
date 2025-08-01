@@ -285,7 +285,18 @@ serve(async (req) => {
       target_user_type,
       topic,
       admin_id,
-      project_id: serviceAccount.project_id
+      project_id: serviceAccount.project_id,
+      timestamp: new Date().toISOString()
+    })
+    
+    // Log additional debugging information
+    console.log('🔍 Debug Info:', {
+      has_title: !!title,
+      has_body: !!body,
+      has_target_user: !!(target_user_id && target_user_type),
+      has_topic: !!topic,
+      has_data: !!data,
+      has_deep_link: !!deep_link_url
     })
 
     // Generate OAuth2 access token
@@ -326,6 +337,19 @@ serve(async (req) => {
           throw new Error(`Invalid target_user_type: ${target_user_type}`)
       }
 
+      // First check if user exists
+      const { data: userExists, error: userCheckError } = await supabase
+        .from(tableName)
+        .select('id')
+        .eq('id', target_user_id)
+        .single()
+        
+      if (userCheckError) {
+        console.error('❌ User not found in table:', tableName, target_user_id)
+        throw new Error(`User ${target_user_id} not found in ${tableName} table`)
+      }
+      
+      // Get user's FCM token from database
       const { data: user, error } = await supabase
         .from(tableName)
         .select('fcm_token')

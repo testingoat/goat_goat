@@ -7,33 +7,15 @@ import 'supabase_service.dart';
 import 'screens/developer_dashboard_screen.dart';
 import 'screens/customer_portal_screen.dart';
 
-// Firebase imports with platform-aware initialization (temporarily disabled - compatibility issues)
-// import 'services/firebase_platform_service.dart';
+// Firebase imports
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
+import 'services/fcm_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Firebase with zero-risk platform-aware handling
-  await _initializeFirebase();
-
   runApp(const MyApp());
-}
-
-/// Initialize Firebase with zero-risk platform-aware handling (temporarily disabled)
-Future<void> _initializeFirebase() async {
-  try {
-    if (kDebugMode) {
-      print(
-        '🔥 Firebase initialization temporarily disabled due to compatibility issues',
-      );
-      print('   App will continue with SMS notifications only');
-    }
-  } catch (e) {
-    if (kDebugMode) {
-      print('❌ Firebase initialization error: $e');
-      print('   App will continue with SMS notifications only');
-    }
-  }
 }
 
 class MyApp extends StatefulWidget {
@@ -54,6 +36,19 @@ class _MyAppState extends State<MyApp> {
 
   Future<void> _initializeSupabase() async {
     try {
+      // Initialize Firebase first
+      if (kDebugMode) {
+        print('🔥 Initializing Firebase...');
+      }
+      
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+      
+      if (kDebugMode) {
+        print('✅ Firebase initialized successfully');
+      }
+      
       // Initialize Supabase with your project credentials
       // Replace these with your actual Supabase URL and anon key
       await SupabaseService().initialize(
@@ -62,8 +57,8 @@ class _MyAppState extends State<MyApp> {
             'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9heW5menFqaWVsbnNpcHR0emJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk5MDU3NDUsImV4cCI6MjA2NTQ4MTc0NX0.RnhpZ7ri3Nf3vmDMCmLqYnB8cRNZc_u-3dhCutpUWEA',
       );
 
-      // FCM Service is now initialized through FirebasePlatformService
-      // This provides zero-risk platform-aware initialization
+      // Initialize FCM Service
+      await _initializeFCMService();
     } catch (e) {
       // Handle initialization error
       print('Initialization error: $e');
@@ -74,11 +69,21 @@ class _MyAppState extends State<MyApp> {
     }
   }
 
-  /// Initialize FCM Service with proper error handling (temporarily disabled)
+  /// Initialize FCM Service with proper error handling
   Future<void> _initializeFCMService() async {
-    // Temporarily disabled for mobile testing
-    if (kDebugMode) {
-      print('🔔 FCM Service initialization skipped for testing');
+    try {
+      final fcmService = FCMService();
+      await fcmService.initialize(
+        onNotificationTapped: _handleNotificationTapped,
+      );
+      
+      if (kDebugMode) {
+        print('✅ FCM Service initialized successfully');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ FCM Service initialization error: $e');
+      }
     }
   }
 

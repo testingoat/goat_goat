@@ -366,6 +366,117 @@ class FCMTestService {
     }
   }
 
+  /// Get detailed FCM diagnostics
+  Future<Map<String, dynamic>> getFCMDiagnostics() async {
+    if (kDebugMode) {
+      print('🔍 Getting FCM diagnostics...');
+    }
+
+    try {
+      // Run the full test suite to get all test results
+      final testResults = await runFullTestSuite();
+      
+      // Get detailed diagnostics from FCM service
+      final serviceDiagnostics = await _fcmService.getDiagnostics();
+
+      // Calculate overall health score
+      final totalTests = testResults['total'];
+      final passedTests = testResults['passed'];
+      final healthScore = {
+        'total_tests': totalTests,
+        'passed_tests': passedTests,
+        'percentage': totalTests > 0 ? (passedTests / totalTests * 100).round() : 0,
+        'status': passedTests == totalTests ? 'healthy' : passedTests > 0 ? 'partial' : 'unhealthy',
+      };
+
+      if (kDebugMode) {
+        print('✅ FCM diagnostics completed');
+        print('📊 Health Score: ${healthScore['percentage']}%');
+      }
+
+      return {
+        'success': true,
+        'service_diagnostics': serviceDiagnostics,
+        'test_results': testResults,
+        'health_score': healthScore,
+        'message': 'FCM diagnostics completed successfully',
+      };
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ FCM diagnostics failed: $e');
+      }
+      
+      return {
+        'success': false,
+        'error': e.toString(),
+        'message': 'Failed to get FCM diagnostics',
+      };
+    }
+  }
+
+  /// Generate a comprehensive FCM report
+  Future<Map<String, dynamic>> generateReport() async {
+    if (kDebugMode) {
+      print('📋 Generating FCM report...');
+    }
+
+    try {
+      final diagnostics = await getFCMDiagnostics();
+      final testSuite = await runFullTestSuite();
+
+      final report = <String, dynamic>{
+        'generated_at': DateTime.now().toIso8601String(),
+        'app_info': {
+          'package_name': 'com.goatgoat.app',
+          'platform': defaultTargetPlatform.toString(),
+          'flutter_version': '3.8.1',
+        },
+        'firebase_config': {
+          'project_id': 'goat-goat-8e3da',
+          'sender_id': '188247457782',
+        },
+        'diagnostics': diagnostics['diagnostics'],
+        'test_results': testSuite,
+        'recommendations': <String>[],
+      };
+
+      // Generate recommendations based on diagnostics
+      final healthScore = diagnostics['diagnostics']['health_score'];
+      if (healthScore['percentage'] < 100) {
+        report['recommendations'].add('Some FCM components are not working properly. Check the diagnostics for details.');
+      }
+
+      if (healthScore['status'] == 'unhealthy') {
+        report['recommendations'].add('FCM service is not functioning. Verify Firebase configuration and app setup.');
+      }
+
+      final failedTests = testSuite['results'].where((r) => r['passed'] == false);
+      if (failedTests.isNotEmpty) {
+        report['recommendations'].add('Some tests failed. Review the test results for specific issues.');
+      }
+
+      if (kDebugMode) {
+        print('✅ FCM report generated successfully');
+      }
+
+      return {
+        'success': true,
+        'report': report,
+        'message': 'FCM report generated successfully',
+      };
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Failed to generate FCM report: $e');
+      }
+      
+      return {
+        'success': false,
+        'error': e.toString(),
+        'message': 'Failed to generate FCM report',
+      };
+    }
+  }
+
   /// Clear test results
   void clearResults() {
     _testResults.clear();
