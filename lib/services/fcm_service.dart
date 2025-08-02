@@ -1,10 +1,15 @@
 import 'dart:convert';
-import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+// Conditional imports for different platforms
+import 'package:firebase_messaging/firebase_messaging.dart'
+    if (dart.library.html) 'fcm_web_stub.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart'
+    if (dart.library.html) 'fcm_web_stub.dart';
+import 'package:permission_handler/permission_handler.dart'
+    if (dart.library.html) 'fcm_web_stub.dart';
 
 /// Firebase Cloud Messaging Service for Goat Goat
 ///
