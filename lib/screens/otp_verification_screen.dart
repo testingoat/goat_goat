@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'dart:ui';
 import 'dart:async';
 import '../services/otp_service_fallback.dart';
+import '../services/fcm_service.dart';
 import 'seller_dashboard_screen.dart';
 
 class OTPVerificationScreen extends StatefulWidget {
@@ -164,7 +165,23 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
     }
   }
 
+  /// Store FCM token for seller after successful login
+  Future<void> _storeFCMTokenForSeller(Map<String, dynamic> seller) async {
+    try {
+      final fcmService = FCMService();
+      if (fcmService.isInitialized && seller['id'] != null) {
+        await fcmService.storeTokenForSeller(seller['id']);
+      }
+    } catch (e) {
+      // Non-critical error - don't block login flow
+      print('Warning: Failed to store FCM token for seller - $e');
+    }
+  }
+
   void _navigateToDashboard(Map<String, dynamic> seller, String message) {
+    // Store FCM token for seller after successful login
+    _storeFCMTokenForSeller(seller);
+
     showDialog(
       context: context,
       barrierDismissible: false,

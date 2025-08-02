@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../services/notification_service.dart';
-import '../widgets/admin_layout.dart';
 import '../widgets/notification_template_editor.dart';
 
 /// Notifications Management Screen for Admin Panel
@@ -99,7 +98,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
               color: Colors.white,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.grey.withOpacity(0.1),
+                  color: Colors.grey.withValues(alpha: 0.1),
                   spreadRadius: 1,
                   blurRadius: 3,
                   offset: const Offset(0, 1),
@@ -300,7 +299,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Colors.grey.withValues(alpha: 0.1),
             spreadRadius: 1,
             blurRadius: 3,
             offset: const Offset(0, 1),
@@ -339,7 +338,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Colors.grey.withValues(alpha: 0.1),
             spreadRadius: 1,
             blurRadius: 3,
             offset: const Offset(0, 1),
@@ -394,6 +393,24 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                   () => _showBulkOperationsDialog(),
                 ),
               ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildActionButton(
+                  'Retry Failed',
+                  Icons.refresh,
+                  Colors.orange,
+                  () => _showRetryFailedDialog(),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildActionButton(
+                  'Delivery Report',
+                  Icons.analytics,
+                  Colors.indigo,
+                  () => _showDeliveryReportDialog(),
+                ),
+              ),
             ],
           ),
         ],
@@ -410,7 +427,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
     return ElevatedButton(
       onPressed: onPressed,
       style: ElevatedButton.styleFrom(
-        backgroundColor: color.withOpacity(0.1),
+        backgroundColor: color.withValues(alpha: 0.1),
         foregroundColor: color,
         elevation: 0,
         padding: const EdgeInsets.all(16),
@@ -438,7 +455,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Colors.grey.withValues(alpha: 0.1),
             spreadRadius: 1,
             blurRadius: 3,
             offset: const Offset(0, 1),
@@ -529,7 +546,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
       trailing: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
-          color: statusColor.withOpacity(0.1),
+          color: statusColor.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Text(
@@ -752,6 +769,223 @@ class _NotificationsScreenState extends State<NotificationsScreen>
     );
   }
 
+  /// Show retry failed notifications dialog
+  void _showRetryFailedDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Retry Failed Notifications'),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'This will retry all failed notifications from the last 24 hours.',
+            ),
+            SizedBox(height: 16),
+            Text('• Maximum 3 retry attempts per notification'),
+            Text('• 2-second delay between retries'),
+            Text('• Only SMS notifications will be retried'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              await _performRetryFailedNotifications();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.orange[700],
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Retry Failed'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Show delivery report dialog
+  void _showDeliveryReportDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delivery Status Report'),
+        content: const SizedBox(
+          width: 400,
+          height: 300,
+          child: Column(
+            children: [
+              Text('Generating delivery status report for the last 7 days...'),
+              SizedBox(height: 20),
+              CircularProgressIndicator(),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              await _generateDeliveryReport();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.indigo[700],
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Generate Report'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Perform retry of failed notifications
+  Future<void> _performRetryFailedNotifications() async {
+    try {
+      final result = await _notificationService.retryFailedNotifications();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message']),
+            backgroundColor: result['success'] ? Colors.green : Colors.red,
+            action: result['success']
+                ? SnackBarAction(
+                    label: 'Details',
+                    onPressed: () {
+                      _showRetryResultsDialog(result);
+                    },
+                  )
+                : null,
+          ),
+        );
+      }
+
+      // Refresh data
+      await _loadData();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  /// Generate delivery report
+  Future<void> _generateDeliveryReport() async {
+    try {
+      final result = await _notificationService.getDeliveryStatusReport();
+
+      if (mounted) {
+        if (result['success']) {
+          _showDeliveryReportResultsDialog(result['data']);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result['message']),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  /// Show retry results dialog
+  void _showRetryResultsDialog(Map<String, dynamic> result) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Retry Results'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Total Attempted: ${result['total_attempted']}'),
+            Text('Successful Retries: ${result['successful_retries']}'),
+            Text('Failed Retries: ${result['failed_retries']}'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Show delivery report results dialog
+  void _showDeliveryReportResultsDialog(Map<String, dynamic> data) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delivery Status Report'),
+        content: SizedBox(
+          width: 500,
+          height: 400,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Total Notifications: ${data['total_notifications']}'),
+                Text('Successful: ${data['successful_deliveries']}'),
+                Text('Failed: ${data['failed_deliveries']}'),
+                Text('Pending: ${data['pending_deliveries']}'),
+                Text(
+                  'Delivery Rate: ${data['delivery_rate'].toStringAsFixed(1)}%',
+                ),
+                Text('Retry Attempts: ${data['retry_attempts']}'),
+                const SizedBox(height: 16),
+                const Text(
+                  'By Method:',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                ...((data['by_method'] as Map<String, dynamic>).entries.map(
+                  (entry) => Text(
+                    '${entry.key}: ${entry.value['total']} total, ${entry.value['successful']} successful',
+                  ),
+                )),
+                const SizedBox(height: 16),
+                const Text(
+                  'By Type:',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                ...((data['by_type'] as Map<String, dynamic>).entries.map(
+                  (entry) => Text(
+                    '${entry.key}: ${entry.value['total']} total, ${entry.value['successful']} successful',
+                  ),
+                )),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
   String _formatDateTime(DateTime dateTime) {
     final now = DateTime.now();
     final difference = now.difference(dateTime);
@@ -827,7 +1061,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: color.withOpacity(0.1),
+                      color: color.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Icon(icon, color: color, size: 24),
@@ -1639,10 +1873,7 @@ class _SMSNotificationDialogState extends State<_SMSNotificationDialog> {
 
         // For now, we'll use a placeholder approach
         // In a real implementation, you'd fetch actual user IDs from the database
-        recipients.add({
-          'id': 'bulk_${_recipientType}',
-          'type': _recipientType,
-        });
+        recipients.add({'id': 'bulk_$_recipientType', 'type': _recipientType});
 
         result = await widget.notificationService.sendBulkSMSNotification(
           recipients: recipients,

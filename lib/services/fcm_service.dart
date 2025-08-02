@@ -5,7 +5,6 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../supabase_service.dart';
 
 /// Firebase Cloud Messaging Service for Goat Goat
 ///
@@ -29,12 +28,32 @@ class FCMService {
       FlutterLocalNotificationsPlugin();
 
   // Feature flags for gradual rollout
-  static const bool _enableFCM =
-      !kIsWeb; // Disable FCM on web for now due to compatibility issues
-  static const bool _enableLocalNotifications = !kIsWeb;
-  static const bool _enableTopicSubscriptions = !kIsWeb;
+  // Disable FCM on web and Windows due to compatibility issues
+  static bool get _enableFCM {
+    if (kIsWeb) return false;
+    if (defaultTargetPlatform == TargetPlatform.windows) return false;
+    return true;
+  }
+
+  static bool get _enableLocalNotifications {
+    if (kIsWeb) return false;
+    if (defaultTargetPlatform == TargetPlatform.windows) return false;
+    return true;
+  }
+
+  static bool get _enableTopicSubscriptions {
+    if (kIsWeb) return false;
+    if (defaultTargetPlatform == TargetPlatform.windows) return false;
+    return true;
+  }
+
   static const bool _enableDeepLinking = true;
-  static const bool _enableTokenStorage = !kIsWeb;
+
+  static bool get _enableTokenStorage {
+    if (kIsWeb) return false;
+    if (defaultTargetPlatform == TargetPlatform.windows) return false;
+    return true;
+  }
 
   // Current FCM token
   String? _fcmToken;
@@ -51,6 +70,14 @@ class FCMService {
   Future<bool> initialize({
     Function(Map<String, dynamic>)? onNotificationTapped,
   }) async {
+    // Completely skip Firebase initialization on Windows
+    if (defaultTargetPlatform == TargetPlatform.windows) {
+      if (kDebugMode) {
+        print('🔔 FCM Service: Feature disabled on Windows platform');
+      }
+      return false;
+    }
+
     if (!_enableFCM) {
       if (kDebugMode) {
         print('🔔 FCM Service: Feature disabled by flag');
@@ -107,6 +134,11 @@ class FCMService {
 
   /// Request notification permissions
   Future<bool> _requestPermissions() async {
+    // Skip permissions on Windows
+    if (defaultTargetPlatform == TargetPlatform.windows) {
+      return false;
+    }
+
     try {
       // Request Firebase Messaging permissions
       NotificationSettings settings = await _firebaseMessaging
@@ -147,6 +179,11 @@ class FCMService {
 
   /// Initialize local notifications for foreground handling
   Future<void> _initializeLocalNotifications() async {
+    // Skip local notifications on Windows
+    if (defaultTargetPlatform == TargetPlatform.windows) {
+      return;
+    }
+
     try {
       // Android initialization settings
       const AndroidInitializationSettings initializationSettingsAndroid =
@@ -201,6 +238,11 @@ class FCMService {
 
   /// Get and store FCM token
   Future<void> _getFCMToken() async {
+    // Skip token retrieval on Windows
+    if (defaultTargetPlatform == TargetPlatform.windows) {
+      return;
+    }
+
     try {
       _fcmToken = await _firebaseMessaging.getToken();
 
@@ -218,7 +260,9 @@ class FCMService {
         }
       } else {
         if (kDebugMode) {
-          print('❌ FCM: Token is null - this might indicate a configuration issue');
+          print(
+            '❌ FCM: Token is null - this might indicate a configuration issue',
+          );
         }
       }
 
@@ -261,72 +305,128 @@ class FCMService {
             .select('id')
             .eq('id', user.id)
             .maybeSingle();
-            
+
         if (customerResponse != null) {
           // User is a customer
           await Supabase.instance.client
-            .from('customers')
-            .update({'fcm_token': _fcmToken})
-            .eq('id', user.id);
-            
+              .from('customers')
+              .update({'fcm_token': _fcmToken})
+              .eq('id', user.id);
+
           if (kDebugMode) {
             print('✅ FCM: Token stored for customer');
           }
           return;
         }
-        
-        // Check if user is a seller
+
+        // Check if user is a seller (using user_id field)
         final sellerResponse = await Supabase.instance.client
             .from('sellers')
             .select('id')
-            .eq('id', user.id)
+            .eq('user_id', user.id)
             .maybeSingle();
-            
+
         if (sellerResponse != null) {
           // User is a seller
           await Supabase.instance.client
-            .from('sellers')
-            .update({'fcm_token': _fcmToken})
-            .eq('id', user.id);
-            
+              .from('sellers')
+              .update({'fcm_token': _fcmToken})
+              .eq('user_id', user.id);
+
           if (kDebugMode) {
             print('✅ FCM: Token stored for seller');
           }
           return;
         }
-        
+
         // Check if user is an admin
         final adminResponse = await Supabase.instance.client
             .from('admin_users')
             .select('id')
             .eq('id', user.id)
             .maybeSingle();
-            
+
         if (adminResponse != null) {
           // User is an admin
           await Supabase.instance.client
-            .from('admin_users')
-            .update({'fcm_token': _fcmToken})
-            .eq('id', user.id);
-            
+              .from('admin_users')
+              .update({'fcm_token': _fcmToken})
+              .eq('id', user.id);
+
           if (kDebugMode) {
             print('✅ FCM: Token stored for admin');
           }
           return;
         }
-        
+
         if (kDebugMode) {
           print('⚠️ FCM: User not found in any table - token not stored');
         }
       } else {
         if (kDebugMode) {
-          print('⚠️ FCM: No authenticated user - token not stored');
+          print(
+            '⚠️ FCM: No authenticated user - checking for seller session...',
+          );
         }
+
+        // Check for seller session (sellers don't use Supabase Auth)
+        await _storeTokenForSeller();
       }
     } catch (e) {
       if (kDebugMode) {
         print('❌ FCM: Failed to store token in database - $e');
       }
+    }
+  }
+
+  /// Store FCM token for seller (sellers use custom authentication)
+  Future<void> _storeTokenForSeller() async {
+    try {
+      // For now, we'll implement a simpler approach
+      // Check if there's any seller data in local storage or session
+      // This is a placeholder - in a real implementation, you'd check
+      // the current seller session from your app's state management
+
+      if (kDebugMode) {
+        print('⚠️ FCM: Seller token storage not yet implemented');
+        print('   This requires integration with seller session management');
+      }
+
+      if (kDebugMode) {
+        print('⚠️ FCM: Seller token storage requires explicit seller ID');
+        print('   Call storeTokenForSeller(sellerId) after seller login');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ FCM: Failed to store token for seller - $e');
+      }
+    }
+  }
+
+  /// Store FCM token for a specific seller (call this after seller login)
+  Future<bool> storeTokenForSeller(String sellerId) async {
+    if (!_enableTokenStorage || _fcmToken == null) {
+      if (kDebugMode) {
+        print('⚠️ FCM: Token storage disabled or no token available');
+      }
+      return false;
+    }
+
+    try {
+      await Supabase.instance.client
+          .from('sellers')
+          .update({'fcm_token': _fcmToken})
+          .eq('id', sellerId);
+
+      if (kDebugMode) {
+        print('✅ FCM: Token stored for seller: $sellerId');
+      }
+      return true;
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ FCM: Failed to store token for seller $sellerId - $e');
+      }
+      return false;
     }
   }
 
@@ -429,23 +529,23 @@ class FCMService {
         response.payload != null) {
       try {
         Map<String, dynamic> data;
-        
+
         // Try to parse the payload as JSON first
         try {
           data = Map<String, dynamic>.from(
             response.payload != null
-              ? jsonDecode(response.payload!)
-              : <String, dynamic>{}
+                ? jsonDecode(response.payload!)
+                : <String, dynamic>{},
           );
         } catch (_) {
           // If JSON parsing fails, treat as simple key-value
           data = <String, dynamic>{'payload': response.payload};
         }
-        
+
         if (kDebugMode) {
           print('🔗 FCM: Parsed notification data: $data');
         }
-        
+
         _onNotificationTapped!(data);
       } catch (e) {
         if (kDebugMode) {
@@ -531,7 +631,9 @@ class FCMService {
     final diagnostics = <String, dynamic>{
       'is_initialized': _isInitialized,
       'has_token': _fcmToken != null,
-      'token_preview': _fcmToken != null ? '${_fcmToken!.substring(0, 20)}...' : 'null',
+      'token_preview': _fcmToken != null
+          ? '${_fcmToken!.substring(0, 20)}...'
+          : 'null',
       'token_length': _fcmToken?.length ?? 0,
       'platform': defaultTargetPlatform.toString(),
       'feature_flags': {
@@ -542,7 +644,7 @@ class FCMService {
         'enable_token_storage': _enableTokenStorage,
       },
     };
-    
+
     try {
       final settings = await _firebaseMessaging.getNotificationSettings();
       diagnostics['notification_settings'] = {
@@ -554,7 +656,7 @@ class FCMService {
     } catch (e) {
       diagnostics['notification_settings_error'] = e.toString();
     }
-    
+
     return diagnostics;
   }
 }
@@ -573,14 +675,14 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     print('   Message Type: ${message.messageType}');
     print('   TTL: ${message.ttl}');
   }
-  
+
   // TODO: Implement background message handling logic
   // This could include:
   // - Updating local database with notification data
   // - Scheduling local notifications for later display
   // - Processing data payloads for app state updates
   // - Syncing data with server
-  
+
   // For now, just log that the message was received
   if (kDebugMode) {
     print('✅ FCM: Background message processed successfully');

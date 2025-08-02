@@ -19,6 +19,8 @@ class NotificationService {
   static const bool _enableBulkOperations = true;
   static const bool _enableTemplateManagement = true;
   static const bool _enableAnalytics = true;
+  static const bool _enableRetryMechanism = true;
+  static const bool _enableDeliveryTracking = true;
 
   // FCM Push Notification feature flags
   static const bool _enablePushNotifications = true;
@@ -341,6 +343,106 @@ class NotificationService {
       return {
         'success': false,
         'message': 'Failed to preview template: ${e.toString()}',
+      };
+    }
+  }
+
+  /// Retry failed notifications
+  Future<Map<String, dynamic>> retryFailedNotifications({
+    int maxRetries = 3,
+    Duration retryDelay = const Duration(minutes: 5),
+  }) async {
+    try {
+      if (!_enableRetryMechanism) {
+        return {
+          'success': false,
+          'message': 'Retry mechanism feature is currently disabled',
+        };
+      }
+
+      final adminId = _adminAuth.currentAdminId;
+      if (adminId == null) {
+        return {'success': false, 'message': 'Admin authentication required'};
+      }
+
+      print('🔄 Starting retry process for failed notifications...');
+
+      // Get failed notifications that haven't exceeded max retries
+      final failedNotifications = await _supabase
+          .from('notification_logs')
+          .select('*')
+          .eq('delivery_status', 'failed')
+          .lt('delivery_attempts', maxRetries)
+          .gte(
+            'created_at',
+            DateTime.now()
+                .subtract(const Duration(hours: 24))
+                .toIso8601String(),
+          );
+
+      if (failedNotifications.isEmpty) {
+        return {
+          'success': true,
+          'message': 'No failed notifications to retry',
+          'retried_count': 0,
+        };
+      }
+
+      int successCount = 0;
+      int failedCount = 0;
+
+      for (final notification in failedNotifications) {
+        try {
+          // Wait before retry
+          await Future.delayed(const Duration(seconds: 2));
+
+          bool retrySuccess = false;
+
+          if (notification['delivery_method'] == 'sms') {
+            // Retry SMS notification
+            final smsResult = await _sendSMSDirectly(
+              notification['recipient_phone'],
+              notification['message'],
+            );
+            retrySuccess = smsResult['success'];
+          }
+
+          // Update notification log
+          await _supabase
+              .from('notification_logs')
+              .update({
+                'delivery_status': retrySuccess ? 'sent' : 'failed',
+                'delivery_attempts': notification['delivery_attempts'] + 1,
+                'sent_at': retrySuccess
+                    ? DateTime.now().toIso8601String()
+                    : notification['sent_at'],
+                'error_message': retrySuccess ? null : 'Retry failed',
+              })
+              .eq('id', notification['id']);
+
+          if (retrySuccess) {
+            successCount++;
+          } else {
+            failedCount++;
+          }
+        } catch (e) {
+          failedCount++;
+          print('❌ Error retrying notification ${notification['id']}: $e');
+        }
+      }
+
+      return {
+        'success': true,
+        'message': 'Retry process completed',
+        'total_attempted': failedNotifications.length,
+        'successful_retries': successCount,
+        'failed_retries': failedCount,
+      };
+    } catch (e) {
+      print('❌ Error in retry process: $e');
+      return {
+        'success': false,
+        'message': 'Retry process failed: ${e.toString()}',
       };
     }
   }
@@ -807,6 +909,143 @@ class NotificationService {
     }
   }
 
+  /// Get detailed delivery status for notifications
+  Future<Map<String, dynamic>> getDeliveryStatusReport({
+    DateTime? startDate,
+    DateTime? endDate,
+    String? deliveryMethod,
+    String? notificationType,
+  }) async {
+    try {
+      if (!_enableDeliveryTracking) {
+        return {
+          'success': false,
+          'message': 'Delivery tracking feature is currently disabled',
+        };
+      }
+
+      print('📊 Generating delivery status report...');
+
+      final start =
+          startDate ?? DateTime.now().subtract(const Duration(days: 7));
+      final end = endDate ?? DateTime.now();
+
+      var query = _supabase
+          .from('notification_logs')
+          .select(
+            'delivery_status, delivery_method, notification_type, delivery_attempts, created_at',
+          );
+
+      query = query
+          .gte('created_at', start.toIso8601String())
+          .lte('created_at', end.toIso8601String());
+
+      if (deliveryMethod != null) {
+        query = query.eq('delivery_method', deliveryMethod);
+      }
+      if (notificationType != null) {
+        query = query.eq('notification_type', notificationType);
+      }
+
+      final notifications = await query;
+
+      // Calculate statistics
+      final stats = {
+        'total_notifications': notifications.length,
+        'successful_deliveries': 0,
+        'failed_deliveries': 0,
+        'pending_deliveries': 0,
+        'retry_attempts': 0,
+        'delivery_rate': 0.0,
+        'by_method': <String, Map<String, int>>{},
+        'by_type': <String, Map<String, int>>{},
+        'by_status': <String, int>{},
+        'hourly_distribution': <String, int>{},
+      };
+
+      for (final notification in notifications) {
+        final status = notification['delivery_status'] as String;
+        final method = notification['delivery_method'] as String;
+        final type = notification['notification_type'] as String;
+        final attempts = notification['delivery_attempts'] as int? ?? 0;
+        final createdAt = DateTime.parse(notification['created_at']);
+
+        // Count by status
+        switch (status) {
+          case 'sent':
+            stats['successful_deliveries'] =
+                (stats['successful_deliveries'] as int) + 1;
+            break;
+          case 'failed':
+            stats['failed_deliveries'] =
+                (stats['failed_deliveries'] as int) + 1;
+            break;
+          case 'pending':
+            stats['pending_deliveries'] =
+                (stats['pending_deliveries'] as int) + 1;
+            break;
+        }
+
+        // Count retry attempts
+        if (attempts > 1) {
+          stats['retry_attempts'] =
+              (stats['retry_attempts'] as int) + (attempts - 1);
+        }
+
+        // Count by method
+        final methodStats =
+            (stats['by_method'] as Map<String, Map<String, int>>);
+        methodStats[method] ??= {'total': 0, 'successful': 0, 'failed': 0};
+        methodStats[method]!['total'] = methodStats[method]!['total']! + 1;
+        if (status == 'sent') {
+          methodStats[method]!['successful'] =
+              methodStats[method]!['successful']! + 1;
+        } else if (status == 'failed') {
+          methodStats[method]!['failed'] = methodStats[method]!['failed']! + 1;
+        }
+
+        // Count by type
+        final typeStats = (stats['by_type'] as Map<String, Map<String, int>>);
+        typeStats[type] ??= {'total': 0, 'successful': 0, 'failed': 0};
+        typeStats[type]!['total'] = typeStats[type]!['total']! + 1;
+        if (status == 'sent') {
+          typeStats[type]!['successful'] = typeStats[type]!['successful']! + 1;
+        } else if (status == 'failed') {
+          typeStats[type]!['failed'] = typeStats[type]!['failed']! + 1;
+        }
+
+        // Count by status
+        final statusStats = (stats['by_status'] as Map<String, int>);
+        statusStats[status] = (statusStats[status] ?? 0) + 1;
+
+        // Hourly distribution
+        final hour = '${createdAt.hour.toString().padLeft(2, '0')}:00';
+        final hourlyStats = (stats['hourly_distribution'] as Map<String, int>);
+        hourlyStats[hour] = (hourlyStats[hour] ?? 0) + 1;
+      }
+
+      // Calculate delivery rate
+      final total = stats['total_notifications'] as int;
+      final successful = stats['successful_deliveries'] as int;
+      stats['delivery_rate'] = total > 0 ? (successful / total * 100) : 0.0;
+
+      return {
+        'success': true,
+        'data': stats,
+        'period': {
+          'start': start.toIso8601String(),
+          'end': end.toIso8601String(),
+        },
+      };
+    } catch (e) {
+      print('❌ Error generating delivery status report: $e');
+      return {
+        'success': false,
+        'message': 'Failed to generate report: ${e.toString()}',
+      };
+    }
+  }
+
   /// Get recent notifications with pagination
   Future<Map<String, dynamic>> getRecentNotifications({
     int limit = 20,
@@ -998,6 +1237,7 @@ class NotificationService {
 
   /// Check if targeted notifications are enabled
   bool get isTargetedNotificationsEnabled => _enableTargetedNotifications;
+
   /// Send combined SMS + Push notification
   Future<Map<String, dynamic>> sendCombinedNotification({
     required String title,
@@ -1014,7 +1254,9 @@ class NotificationService {
         return {'success': false, 'message': 'Admin authentication required'};
       }
 
-      print('📱📡 Sending combined SMS + Push notification to $recipientType: $recipientId');
+      print(
+        '📱📡 Sending combined SMS + Push notification to $recipientType: $recipientId',
+      );
 
       // Send SMS notification
       final smsResult = await sendSMSNotification(
