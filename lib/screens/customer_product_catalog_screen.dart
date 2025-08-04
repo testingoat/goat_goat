@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import '../supabase_service.dart';
 import '../services/shopping_cart_service.dart';
+import '../services/customer_notification_service.dart';
+import '../services/auth_service.dart';
 import '../config/feature_flags.dart';
 import 'customer_order_history_screen.dart';
 import 'customer_shopping_cart_screen.dart';
+import 'customer_notifications_screen.dart';
 
 class CustomerProductCatalogScreen extends StatefulWidget {
   final Map<String, dynamic> customer;
@@ -19,18 +22,23 @@ class _CustomerProductCatalogScreenState
     extends State<CustomerProductCatalogScreen> {
   final SupabaseService _supabaseService = SupabaseService();
   final ShoppingCartService _cartService = ShoppingCartService();
+  final CustomerNotificationService _notificationService =
+      CustomerNotificationService();
+  final AuthService _authService = AuthService();
   final _searchController = TextEditingController();
 
   List<Map<String, dynamic>> _products = [];
   bool _isLoading = true;
   String _searchQuery = '';
   int _cartItemCount = 0;
+  int _notificationCount = 0;
 
   @override
   void initState() {
     super.initState();
     _loadProducts();
     _updateCartCount();
+    _updateNotificationCount();
   }
 
   @override
@@ -145,6 +153,42 @@ class _CustomerProductCatalogScreenState
               onPressed: () => _navigateToOrderHistory(),
               tooltip: 'Order History',
             ),
+          // Notifications Button
+          Stack(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.notifications, color: Colors.white),
+                onPressed: () => _navigateToNotifications(),
+                tooltip: 'Notifications',
+              ),
+              if (_notificationCount > 0)
+                Positioned(
+                  right: 8,
+                  top: 8,
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    constraints: const BoxConstraints(
+                      minWidth: 16,
+                      minHeight: 16,
+                    ),
+                    child: Text(
+                      '$_notificationCount',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          // Shopping Cart Button
           Stack(
             children: [
               IconButton(
@@ -177,6 +221,27 @@ class _CustomerProductCatalogScreenState
                     ),
                   ),
                 ),
+            ],
+          ),
+          // Logout Button
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert, color: Colors.white),
+            onSelected: (value) {
+              if (value == 'logout') {
+                _showLogoutDialog();
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'logout',
+                child: Row(
+                  children: [
+                    Icon(Icons.logout, color: Colors.red),
+                    SizedBox(width: 8),
+                    Text('Logout'),
+                  ],
+                ),
+              ),
             ],
           ),
         ],
@@ -466,6 +531,23 @@ class _CustomerProductCatalogScreenState
     }
   }
 
+  /// Update notification count for badge display
+  Future<void> _updateNotificationCount() async {
+    try {
+      final count = await _notificationService.getUnreadNotificationCount(
+        widget.customer['id'],
+      );
+      if (mounted) {
+        setState(() {
+          _notificationCount = count;
+        });
+      }
+    } catch (e) {
+      // Silently handle notification count update errors
+      print('Error updating notification count: $e');
+    }
+  }
+
   /// Navigate to Order History screen (Phase 1.1 feature)
   ///
   /// This method provides navigation to the new Order History feature
@@ -514,5 +596,74 @@ class _CustomerProductCatalogScreenState
       // Refresh cart count when returning from cart screen
       _updateCartCount();
     });
+  }
+
+  /// Navigate to Notifications screen
+  ///
+  /// This method provides navigation to the notifications screen
+  /// and refreshes notification count when returning
+  void _navigateToNotifications() {
+    // Log feature usage
+    FeatureFlags.logFeatureUsage('notifications', 'navigation_from_catalog');
+
+    // Navigate to Notifications screen
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) =>
+            CustomerNotificationsScreen(customer: widget.customer),
+      ),
+    ).then((_) {
+      // Refresh notification count when returning from notifications screen
+      _updateNotificationCount();
+    });
+  }
+
+  /// Show logout confirmation dialog
+  void _showLogoutDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Logout'),
+        content: const Text('Are you sure you want to logout?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _performLogout();
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Logout'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Perform logout and return to main screen
+  Future<void> _performLogout() async {
+    try {
+      // Clear the session
+      await _authService.clearSession();
+
+      // Navigate back to main screen (replace entire navigation stack)
+      if (mounted) {
+        Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+      }
+    } catch (e) {
+      // Handle logout error
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Logout failed: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 }

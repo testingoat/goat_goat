@@ -1,0 +1,430 @@
+[    0.000187] Starting recovery (pid 425) on Thu Mar 26 11:41:27 1970
+[    0.000996] recovery filesystem table
+[    0.001007] =========================
+[    0.001016]   0 /system ext4 /dev/block/platform/soc/7824900.sdhci/by-name/system 0
+[    0.001023]   1 /system ext4 /dev/block/bootdevice/by-name/system 0
+[    0.001029]   2 /cache ext4 /dev/block/bootdevice/by-name/cache 0
+[    0.001035]   3 /data ext4 /dev/block/bootdevice/by-name/userdata -16384
+[    0.001043]   4 /sdcard vfat /dev/block/mmcblk1p1 0
+[    0.001049]   5 /boot emmc /dev/block/bootdevice/by-name/boot 0
+[    0.001055]   6 /recovery emmc /dev/block/bootdevice/by-name/recovery 0
+[    0.001061]   7 /misc emmc /dev/block/bootdevice/by-name/misc 0
+[    0.001068]   8 /oem ext4 /dev/block/bootdevice/by-name/oem 0
+[    0.001074]   9 /modem ext4 /dev/block/bootdevice/by-name/modem 0
+[    0.001082]   10 /dsp ext4 /dev/block/bootdevice/by-name/dsp 0
+[    0.001088]   11 /tmp ramdisk ramdisk 0
+[    0.001093]
+[    0.002108] I:Boot command: boot-recovery
+[    0.002152] I:Got 4 arguments from boot message
+[    0.003933] locale is [en-US]
+[    0.003941] stage is []
+[    0.003951] reason is [MasterClearConfirm]
+[    0.004185] libc: Access denied finding property "ro.sf.lcd_density"
+[    0.051161] W:Failed to set brightness: Permission denied
+[    0.051168] I:Screensaver disabled
+[    0.052993] cannot find/open a drm device: No such file or directory
+[    0.053222] fb0 reports (possibly inaccurate):
+[    0.053228]   vi.bits_per_pixel = 32
+[    0.053234]   vi.red.offset   =   0   .length =   8
+[    0.053240]   vi.green.offset =   8   .length =   8
+[    0.053246]   vi.blue.offset  =  16   .length =   8
+[    0.067315] framebuffer: 0 (1080 x 1920)
+[    0.098812]           erasing_text: en-US (137 x 57 @ 1740)
+[    0.105137]        no_command_text: en-US (249 x 57 @ 1740)
+[    0.109874]             error_text: en-US (99 x 57 @ 1740)
+[    1.017966]        installing_text: en-US (459 x 57 @ 1740)
+[    1.047723] SELinux: Loaded file_contexts
+[    1.047744] Command: "/sbin/recovery" "--wipe_data" "--reason=MasterClearConfirm" "--locale=en-US"
+[    1.047752]
+[    1.048019] sys.usb.controller=7000000.dwc3
+[    1.048272] ro.product.name=sanders_retail
+[    1.048279] ro.product.device=sanders
+[    1.048438] ro.oem.key1=retin
+[    1.048444] ro.carrier=retin
+[    1.049478] debug.gralloc.enable_fb_ubwc=1
+[    1.049575] persist.vendor.dpm.feature=0
+[    1.049611] af.fast_track_multiplier=1
+[    1.049618] av.debug.disable.pers.cache=1
+[    1.049626] av.offload.enable=false
+[    1.049631] mm.enable.sec.smoothstreaming=false
+[    1.049637] mm.enable.qcom_parser=135715
+[    1.049643] mm.enable.smoothstreaming=false
+[    1.049651] pm.dexopt.boot=verify
+[    1.049657] pm.dexopt.ab-ota=speed-profile
+[    1.049662] pm.dexopt.shared=speed
+[    1.049668] pm.dexopt.install=quicken
+[    1.049673] pm.dexopt.inactive=verify
+[    1.049679] pm.dexopt.bg-dexopt=speed-profile
+[    1.049684] pm.dexopt.first-boot=quicken
+[    1.049692] ro.fm.transmitter=false
+[    1.049698] ro.qc.sdk.audio.ssr=false
+[    1.049704] ro.qc.sdk.audio.fluencetype=none
+[    1.049709] ro.adb.secure=1
+[    1.049715] ro.com.google.ime.theme_id=4
+[    1.049720] ro.com.google.gmsversion=8.1_201805
+[    1.049726] ro.com.google.rlzbrandcode=MOTC
+[    1.049732] ro.com.google.rlz_ap_whitelist=y0,y5,y6,y7,y8
+[    1.049738] ro.frp.pst=/dev/block/bootdevice/by-name/frp
+[    1.049746] ro.mot.build.product.increment=31
+[    1.049752] ro.mot.build.version.release=28.31
+[    1.049757] ro.mot.build.version.sdk_int=28
+[    1.049763] ro.mot.build.customerid=retail
+[    1.049768] ro.mot.sensors.glance_approach=false
+[    1.049774] ro.mot.security.enable=true
+[    1.049780] ro.mot.ignore_csim_appid=true
+[    1.049785] ro.opa.eligible_device=true
+[    1.049791] ro.sys.sdcardfs=1
+[    1.049796] ro.url.legal=http://www.google.com/intl/%s/mobile/android/basic/phone-legal.html
+[    1.049802] ro.url.legal.android_privacy=http://www.google.com/intl/%s/mobile/android/basic/privacy.html
+[    1.049808] ro.usb.bpt=2ee5
+[    1.049814] ro.usb.mtp=2e82
+[    1.049819] ro.usb.ptp=2e83
+[    1.049843] ro.usb.bpteth=2ee7
+[    1.049849] ro.usb.bpt_adb=2ee6
+[    1.049855] ro.usb.mtp_adb=2e76
+[    1.049860] ro.usb.ptp_adb=2e84
+[    1.049866] ro.usb.bpteth_adb=2ee8
+[    1.049871] ro.wff=recovery
+[    1.049876] ro.boot.cid=0x32
+[    1.049882] ro.boot.uid=C035992300000000000000000000
+[    1.049887] ro.boot.emmc=true
+[    1.049893] ro.boot.mode=normal
+[    1.049898] ro.boot.flash.locked=1
+[    1.049904] ro.boot.hwrev=0x8400
+[    1.049909] ro.boot.radio=INDIA
+[    1.049915] ro.boot.device=sanders
+[    1.049920] ro.boot.fsg-id=
+[    1.049926] ro.boot.carrier=retin
+[    1.049931] ro.boot.dualsim=true
+[    1.049936] ro.boot.baseband=msm
+[    1.049942] ro.boot.bl_state=1
+[    1.049947] ro.boot.hardware=qcom
+[    1.049953] ro.boot.hardware.sku=XT1804
+[    1.049958] ro.boot.ssm_data=0000000002006661
+[    1.049964] ro.boot.bootdevice=7824900.sdhci
+[    1.049969] ro.boot.bootloader=0xC212
+[    1.049974] ro.boot.bootreason=reboot
+[    1.049980] ro.boot.veritymode=enforcing
+[    1.049988] ro.boot.wifimacaddr=A8:96:75:05:41:09,A8:96:75:05:41:0A
+[    1.049994] ro.boot.write_protect=1
+[    1.050000] ro.boot.poweroff_alarm=0
+[    1.050005] ro.boot.powerup_reason=0x00004000
+[    1.050011] ro.boot.secure_hardware=1
+[    1.050016] ro.boot.verifiedbootstate=green
+[    1.050021] ro.hwui.path_cache_size=32
+[    1.050027] ro.hwui.layer_cache_size=48
+[    1.050032] ro.hwui.gradient_cache_size=1
+[    1.050038] ro.hwui.r_buffer_cache_size=8
+[    1.050043] ro.hwui.drop_shadow_cache_size=6
+[    1.050049] ro.hwui.text_large_cache_width=2048
+[    1.050054] ro.hwui.text_small_cache_width=1024
+[    1.050060] ro.hwui.text_large_cache_height=1024
+[    1.050065] ro.hwui.text_small_cache_height=1024
+[    1.050071] ro.hwui.texture_cache_flushrate=0.4
+[    1.050076] ro.wifi.channels=
+[    1.050082] ro.allow.mock.location=0
+[    1.050087] ro.board.platform=msm8953
+[    1.050092] ro.build.id=OPS28.65-36
+[    1.050098] ro.build.date=Fri Aug 10 22:42:49 CDT 2018
+[    1.050103] ro.build.date.utc=1533958969
+[    1.050109] ro.build.host=ilclbld33
+[    1.050114] ro.build.tags=release-keys
+[    1.050120] ro.build.type=user
+[    1.050125] ro.build.user=hudsoncm
+[    1.050131] ro.build.product=sanders
+[    1.050136] ro.build.version.ci=40
+[    1.050141] ro.build.version.sdk=27
+[    1.050147] ro.build.version.qcom=LA.UM.6.6.r1-08600-89xx.0
+[    1.050152] ro.build.version.release=8.1.0
+[    1.050158] ro.build.version.codename=REL
+[    1.050163] ro.build.version.incremental=9fea
+[    1.050169] ro.build.version.preview_sdk=0
+[    1.050174] ro.build.version.all_codenames=REL
+[    1.050180] ro.build.version.security_patch=2018-08-01
+[    1.050185] ro.build.thumbprint=8.1.0/OPS28.65-36/9fea:user/release-keys
+[    1.050191] ro.build.characteristics=default
+[    1.050200] ro.build.shutdown_timeout=0
+[    1.050205] ro.media.enc.aud.ch=1
+[    1.050211] ro.media.enc.aud.hz=8000
+[    1.050216] ro.media.enc.aud.bps=13300
+[    1.050222] ro.media.enc.aud.codec=qcelp
+[    1.050227] ro.media.enc.aud.fileformat=qcp
+[    1.050233] ro.radio.imei.sv=16
+[    1.050238] ro.bug2go.magickeys=24,26
+[    1.050243] ro.lenovo.single_hand=1
+[    1.050249] ro.secure=1
+[    1.050254] ro.treble.enabled=false
+[    1.050260] ro.vendor.qti.sys.fw.empty_app_percent=50
+[    1.050265] ro.vendor.qti.sys.fw.use_trim_settings=true
+[    1.050271] ro.vendor.qti.sys.fw.trim_cache_percent=100
+[    1.050276] ro.vendor.qti.sys.fw.trim_empty_percent=100
+[    1.050282] ro.vendor.qti.sys.fw.trim_enable_memory=2147483648
+[    1.050287] ro.vendor.qti.config.zram=true
+[    1.050293] ro.vendor.qti.core_ctl_max_cpu=4
+[    1.050298] ro.vendor.qti.core_ctl_min_cpu=2
+[    1.050304] ro.vendor.product.name=sanders_retail
+[    1.050309] ro.vendor.product.brand=motorola
+[    1.050315] ro.vendor.product.model=Moto G (5S) Plus
+[    1.050320] ro.vendor.product.device=sanders
+[    1.050326] ro.vendor.product.manufacturer=motorola
+[    1.050331] ro.vendor.at_library=libqti-at.so
+[    1.050336] ro.vendor.gt_library=libqti-gt.so
+[    1.050342] ro.vendor.extension_library=libqti-perfd-client.so
+[    1.050347] ro.zygote=zygote32
+[    1.050359] ro.memperf.lib=libmemperf.so
+[    1.050365] ro.memperf.enable=false
+[    1.050370] ro.product.cpu.abi=armeabi-v7a
+[    1.050376] ro.product.cpu.abi2=armeabi
+[    1.050381] ro.product.cpu.abilist=armeabi-v7a,armeabi
+[    1.050387] ro.product.cpu.abilist32=armeabi-v7a,armeabi
+[    1.050392] ro.product.cpu.abilist64=
+[    1.050398] ro.product.board=msm8953
+[    1.050403] ro.product.brand=motorola
+[    1.050408] ro.product.model=Moto G (5S) Plus
+[    1.050414] ro.product.locale=en-US
+[    1.050419] ro.product.manufacturer=motorola
+[    1.050425] ro.product.first_api_level=25
+[    1.050430] ro.baseband=msm
+[    1.050436] ro.bootmode=normal
+[    1.050441] ro.hardware=qcom
+[    1.050447] ro.hardware.nfc_nci=pn54x
+[    1.050452] ro.hardware.sensors=sanders
+[    1.050458] ro.logdumpd.enabled=0
+[    1.050463] ro.qualcomm.cabl=0
+[    1.050468] ro.revision=p400
+[    1.050474] ro.bootimage.build.date=Fri Aug 10 22:42:49 CDT 2018
+[    1.050479] ro.bootimage.build.date.utc=1533958969
+[    1.050485] ro.bootimage.build.fingerprint=motorola/sanders_retail/sanders:8.1.0/OPS28.65-36/9fea:user/release-keys
+[    1.050490] ro.emmc_size=16GB
+[    1.050496] ro.bootloader=0xC212
+[    1.050501] ro.bootreason=reboot
+[    1.050507] ro.debuggable=0
+[    1.050512] ro.emulate_fbe=false
+[    1.050522] ro.recovery_id=0xf845c8621b04618ddebde5f684ca74346d7c7f93000000000000000000000000
+[    1.050528] ro.setupwizard.mode=OPTIONAL
+[    1.050533] ro.property_service.version=2
+[    1.050538] ro.use_data_netmgrd=true
+[    1.050544] ro.cutoff_voltage_mv=3400
+[    1.050549] ro.oem_unlock_supported=1
+[    1.050555] ro.control_privapp_permissions=enforce
+[    1.050560] drm.service.enabled=true
+[    1.050566] mmp.enable.3g2=true
+[    1.050571] sdm.debug.disable_skip_validate=1
+[    1.050577] use.qti.sw.ape.decoder=true
+[    1.050582] use.qti.sw.alac.decoder=true
+[    1.050587] use.voice.path.for.pcm.voip=false
+[    1.050593] init.svc.charger=running
+[    1.050598] init.svc.ueventd=running
+[    1.050603] init.svc.recovery=running
+[    1.050609] qcom.bt.le_dev_pwr_class=1
+[    1.050614] qcom.hw.aac.encoder=false
+[    1.050620] rild.libargs=-d /dev/smd0
+[    1.050625] rild.libpath=/system/vendor/lib/libril-qc-qmi-1.so
+[    1.050631] vidc.dec.disable.split.cpu=1
+[    1.050636] vidc.enc.dcvs.extra-buff-count=2
+[    1.050642] audio.pp.asphere.enabled=false
+[    1.050647] audio.safx.pbe.enabled=true
+[    1.050652] audio.dolby.ds2.enabled=true
+[    1.050658] audio.parser.ip.buffer.size=262144
+[    1.050663] audio.offload.min.duration.secs=60
+[    1.050669] audio.offload.pcm.16bit.enable=false
+[    1.050674] audio.offload.pcm.24bit.enable=false
+[    1.050680] audio.offload.track.enable=true
+[    1.050685] audio.offload.video=false
+[    1.050690] audio.offload.buffer.size.kb=64
+[    1.050696] audio.offload.disable=false
+[    1.050702] audio.offload.gapless.enabled=false
+[    1.050707] audio.offload.multiple.enabled=false
+[    1.050713] audio.playback.mch.downsample=true
+[    1.050718] audio.deep_buffer.media=true
+[    1.050723] media.settings.xml=/vendor/etc/media_profiles.xml
+[    1.050729] media.msm8956hw=0
+[    1.050763] media.aac_51_output_enabled=true
+[    1.050770] video.disable.ubwc=1
+[    1.050776] voice.conc.fallbackpath=deep-buffer
+[    1.050782] voice.voip.conc.disabled=true
+[    1.050787] voice.record.conc.disabled=false
+[    1.050792] voice.playback.conc.disabled=true
+[    1.050798] tunnel.audio.encode=false
+[    1.050803] vendor.vidc.dec.downscalar_width=1920
+[    1.050809] vendor.vidc.dec.downscalar_height=1088
+[    1.050814] vendor.vidc.enc.disable.pq=true
+[    1.050820] vendor.vidc.enc.disable_bframes=1
+[    1.050825] vendor.vidc.disable.split.mode=1
+[    1.050831] vendor.display.enable_default_color_mode=1
+[    1.050836] persist.mm.sta.enable=0
+[    1.050842] persist.cne.rat.wlan.chip.oem=WCN
+[    1.050847] persist.cne.feature=1
+[    1.050853] persist.cne.logging.qxdm=3974
+[    1.050858] persist.hwc.mdpcomp.enable=true
+[    1.050864] persist.hwc.enable_vds=1
+[    1.050869] persist.lte.pco_supported=true
+[    1.050874] persist.qfp=false
+[    1.050885] persist.data.qmi.adb_logmask=0
+[    1.050891] persist.data.mode=concurrent
+[    1.050897] persist.data.iwlan.enable=true
+[    1.050902] persist.data.netmgrd.qos.enable=true
+[    1.050908] persist.demo.hdmirotationlock=false
+[    1.050913] persist.rild.nitz_plmn=
+[    1.050919] persist.rild.nitz_long_ons_0=
+[    1.050924] persist.rild.nitz_long_ons_1=
+[    1.050929] persist.rild.nitz_long_ons_2=
+[    1.050935] persist.rild.nitz_long_ons_3=
+[    1.050940] persist.rild.nitz_short_ons_0=
+[    1.050946] persist.rild.nitz_short_ons_1=
+[    1.050951] persist.rild.nitz_short_ons_2=
+[    1.050957] persist.rild.nitz_short_ons_3=
+[    1.050962] persist.vold.ecryptfs_supported=true
+[    1.050967] persist.timed.enable=true
+[    1.050973] persist.vendor.ims.disableQXDMLogs=1
+[    1.050978] persist.vendor.ims.disableDebugLogs=1
+[    1.050984] persist.vendor.camera.display.lmax=1280x720
+[    1.050989] persist.vendor.camera.display.umax=1920x1080
+[    1.050995] persist.vendor.qcomsysd.enabled=1
+[    1.051000] persist.speaker.prot.enable=false
+[    1.051006] persist.fuse_sdcard=true
+[    1.051011] persist.esdfs_sdcard=false
+[    1.051016] keyguard.no_require_sim=true
+[    1.051022] audio_hal.period_size=240
+[    1.051030] telephony.lteOnCdmaDevice=1
+[    1.051036] DEVICE_PROVISIONED=1
+[    1.051041] mdc_initial_max_retry=10
+[    1.051047] security.perf_harden=1
+[    1.051052] ro.boot.serialno=ZY32286WPB
+[    1.051058] ro.serialno=ZY32286WPB
+[    1.051104] persist.debug.coresight.config=stm-events
+[    1.051149] persist.audio.cal.sleeptime=6000
+[    1.051156] persist.audio.dualmic.config=endfire
+[    1.051162] persist.audio.endcall.delay=250
+[    1.051170] persist.audio.fluence.speaker=false
+[    1.051176] persist.audio.fluence.voicerec=false
+[    1.051182] persist.audio.fluence.voicecall=true
+[    1.051187] persist.audio.fluence.voicecomm=true
+[    1.051193] persist.audio.calfile0=/etc/acdbdata/Bluetooth_cal.acdb
+[    1.051200] persist.audio.calfile1=/etc/acdbdata/General_cal.acdb
+[    1.051206] persist.audio.calfile2=/etc/acdbdata/Global_cal.acdb
+[    1.051212] persist.audio.calfile3=/etc/acdbdata/Handset_cal.acdb
+[    1.051217] persist.audio.calfile4=/etc/acdbdata/Hdmi_cal.acdb
+[    1.051223] persist.audio.calfile5=/etc/acdbdata/Headset_cal.acdb
+[    1.051229] persist.audio.calfile6=/etc/acdbdata/Speaker_cal.acdb
+[    1.051497] ro.telephony.default_network=10,0
+[    1.051503] ril.subscription.types=NV,RUIM
+[    1.051509] persist.radio.schd.cache=3500
+[    1.051518] persist.radio.calls.on.ims=true
+[    1.051523] persist.radio.domain.ps=0
+[    1.051529] persist.radio.apn_delay=5000
+[    1.051534] persist.radio.msgtunnel.start=true
+[    1.051540] persist.radio.sar_sensor=1
+[    1.051547] persist.radio.REVERSE_QMI=0
+[    1.051553] persist.radio.apm_sim_not_pwdn=1
+[    1.051558] persist.vendor.radio.jbims=1
+[    1.051564] persist.vendor.radio.rat_on=combine
+[    1.051569] persist.vendor.radio.custom_ecc=1
+[    1.051575] persist.vendor.radio.mt_sms_ack=30
+[    1.051580] persist.vendor.radio.cs_srv_type=1
+[    1.051586] persist.vendor.radio.dfr_mode_set=1
+[    1.051594] persist.vendor.radio.lte_vrte_ltd=1
+[    1.051600] persist.vendor.radio.data_con_rprt=1
+[    1.051605] persist.vendor.radio.eri64_as_home=1
+[    1.051611] persist.vendor.radio.sib16_support=1
+[    1.051616] persist.vendor.radio.sw_mbn_update=1
+[    1.051622] persist.vendor.radio.add_power_save=1
+[    1.051627] persist.vendor.radio.force_get_pref=1
+[    1.051633] persist.vendor.radio.is_wps_enabled=true
+[    1.051638] persist.vendor.radio.snapshot_timer=22
+[    1.051643] persist.vendor.radio.oem_ind_to_both=0
+[    1.051649] persist.vendor.radio.apm_sim_not_pwdn=1
+[    1.051654] persist.vendor.radio.no_wait_for_card=1
+[    1.051660] persist.vendor.radio.snapshot_enabled=1
+[    1.051667] persist.vendor.radio.0x9e_not_callname=1
+[    1.051673] persist.vendor.radio.relay_oprt_change=1
+[    1.051678] persist.vendor.radio.qcril_uim_vcc_feature=1
+[    1.051765] ro.hw.hwrev=0x8400
+[    1.051771] ro.hw.radio=INDIA
+[    1.051777] ro.hw.device=sanders
+[    1.051785] ro.hw.dualsim=true
+[    1.051796] dev.pm.dyn_samplingrate=1
+[    1.051802] net.bt.name=Android
+[    1.051808] sys.vendor.shutdown.waittime=500
+[    1.051813] persist.sys.qc.sub.rdump.on=1
+[    1.051821] persist.sys.qc.sub.rdump.max=0
+[    1.051826] persist.sys.cnd.iwlan=1
+[    1.051832] persist.sys.ssr.restart_level=ALL_ENABLE
+[    1.051837] persist.sys.media.use-awesome=false
+[    1.051843] persist.sys.dalvik.vm.lib.2=libart.so
+[    1.051851] debug.sf.hw=1
+[    1.051857] debug.sf.recomputecrop=0
+[    1.051862] debug.sf.enable_hwc_vds=1
+[    1.051868] debug.sf.latch_unsignaled=1
+[    1.051875] debug.egl.hw=1
+[    1.051881] debug.atrace.tags.enableflags=0
+[    1.051887] debug.enable.gamed=0
+[    1.051892] debug.enable.sglscale=1
+[    1.051897] debug.mdpcomp.logs=0
+[    1.051964] ro.dalvik.vm.native.bridge=0
+[    1.051971] dalvik.vm.isa.arm.variant=cortex-a53
+[    1.051977] dalvik.vm.isa.arm.features=default
+[    1.051985] dalvik.vm.dexopt.secondary=true
+[    1.051991] dalvik.vm.usejit=true
+[    1.051996] dalvik.vm.heapsize=384m
+[    1.052002] dalvik.vm.dex2oat-Xms=64m
+[    1.052007] dalvik.vm.dex2oat-Xmx=512m
+[    1.052016] dalvik.vm.heapmaxfree=8m
+[    1.052021] dalvik.vm.heapminfree=512k
+[    1.052027] dalvik.vm.heapstartsize=8m
+[    1.052032] dalvik.vm.appimageformat=lz4
+[    1.052038] dalvik.vm.usejitprofiles=true
+[    1.052043] dalvik.vm.heapgrowthlimit=192m
+[    1.052049] dalvik.vm.stack-trace-dir=/data/anr
+[    1.052054] dalvik.vm.image-dex2oat-Xms=64m
+[    1.052060] dalvik.vm.image-dex2oat-Xmx=64m
+[    1.052068] dalvik.vm.heaptargetutilization=0.75
+[    1.052074] ro.config.ringtone=Moto.ogg
+[    1.052080] ro.config.wallpaper=system/media/wallpapers/default_moto_wallpaper.jpg
+[    1.052085] ro.config.ringtone_2=Moto.ogg
+[    1.052092] ro.config.alarm_alert=Oxygen.ogg
+[    1.052098] ro.config.max_starting_bg=8
+[    1.052103] ro.config.vc_call_vol_steps=8
+[    1.052109] ro.config.notification_sound=Moto.ogg
+[    1.052116]
+[    1.052122] Supported API: 3
+[    1.058919]
+[    1.058937] -- Wiping data...
+[    1.109025] Formatting /data...
+[    1.149755] blk: partition "" size 1835008 not a multiple of io_buffer_size 524288
+[    1.149829] blk: partition "" size 1835008 not a multiple of io_buffer_size 524288
+[    1.149963] blk: partition "" size 21073920 not a multiple of io_buffer_size 524288
+[    1.150076] blk: partition "" size 56883133440 not a multiple of io_buffer_size 524288
+[    1.153108] Trying to access file /sys/block/mmcblk0/mmcblk0p54/start
+[    1.153229] /dev/block/bootdevice/by-name/userdata starts at: 5653921792
+[    1.153262] Formatting partition /dev/block/bootdevice/by-name/userdata of length 56883133952 starting at 5653921792
+[    1.153276] Aligning offset to 4194304 boundary by moving 4194304 bytes
+[   18.705830] Format complete for partition 
+[   18.761121] Formatting /cache...
+[   18.793014] Trying to access file /sys/block/mmcblk0/mmcblk0p52/start
+[   18.794147] /dev/block/bootdevice/by-name/cache starts at: 1090519040
+[   18.794163] Formatting partition /dev/block/bootdevice/by-name/cache of length 268435456 starting at 1090519040
+[   18.794172] Aligning offset to 4194304 boundary by moving 4194304 bytes
+[   18.866063] Format complete for partition 
+[   18.868283] Creating filesystem with parameters:
+[   18.868330]     Size: 268435456
+[   18.868357]     Block size: 4096
+[   18.868384]     Blocks per group: 32768
+[   18.868410]     Inodes per group: 8192
+[   18.868436]     Inode size: 256
+[   18.868463]     Journal blocks: 1024
+[   18.868489]     Label: 
+[   18.868529]     Blocks: 65536
+[   18.868555]     Block groups: 2
+[   18.868581]     Reserved block group size: 15
+[   18.872649] Created filesystem with 11/16384 inodes and 2089/65536 blocks
+[   19.425546]
+[   19.425574] -- Wiping carrier...
+[   19.441785] blk: partition "" size 1835008 not a multiple of io_buffer_size 524288
+[   19.441869] blk: partition "" size 1835008 not a multiple of io_buffer_size 524288
+[   19.442009] blk: partition "" size 21073920 not a multiple of io_buffer_size 524288
+[   19.442119] blk: partition "" size 56883133440 not a multiple of io_buffer_size 524288
+[   19.443439] devname = /dev/block/bootdevice/by-name/carrier
+[   20.133551] carrier partition Erased
+[   20.249070] Data wipe complete.
+[   20.275695] I:Saving locale "en-US"

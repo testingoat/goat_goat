@@ -4,6 +4,7 @@ import 'dart:ui';
 import 'dart:async';
 import '../services/otp_service_fallback.dart';
 import '../services/fcm_service.dart';
+import '../services/auth_service.dart';
 import 'seller_dashboard_screen.dart';
 
 class OTPVerificationScreen extends StatefulWidget {
@@ -29,6 +30,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
   );
   final List<FocusNode> _focusNodes = List.generate(6, (index) => FocusNode());
   final OTPServiceFallback _otpService = OTPServiceFallback();
+  final AuthService _authService = AuthService();
 
   bool _isLoading = false;
   bool _isResending = false;
@@ -199,15 +201,21 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.of(context).pop(); // Close dialog
+
+              // Save seller session for persistent login
+              await _authService.saveSellerSession(seller);
+
               // Navigate to dashboard and clear all previous routes
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(
-                  builder: (context) => SellerDashboardScreen(seller: seller),
-                ),
-                (route) => false,
-              );
+              if (mounted) {
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(
+                    builder: (context) => SellerDashboardScreen(seller: seller),
+                  ),
+                  (route) => false,
+                );
+              }
             },
             child: const Text(
               'Continue to Dashboard',

@@ -1,0 +1,41 @@
+can't find the pid
+Failed to find: /data/misc/anrd/
+Skipping systrace because '/sys/kernel/debug/tracing/tracing_on' content is '0'
+Adding dir /cache/recovery (recursive: 1)
+Duration of '/cache/recovery': 0.797s
+Adding dir /data/misc/recovery (recursive: 1)
+Duration of '/data/misc/recovery': 0.004s
+Adding dir /data/misc/logd (recursive: 0)
+/data/misc/logd: No such file or directory
+Duration of '/data/misc/logd': 0.000s
+MOUNT INFO: 40 entries added to zip file
+Duration of 'MOUNT INFO': 0.074s
+execvp on command 'ss -eionptu' failed (error: No such file or directory)
+*** command 'ss -eionptu' failed: exit code 1
+open(/bugreports/dumpstate_lshal.txt): No such file or directory
+Skipping 'lsmod' because /proc/modules does not exist
+Adjusting max progress from 5000 to 5505
+Adjusting max progress from 5505 to 6066
+Adding dir /data/misc/bluetooth/logs (recursive: 1)
+Duration of '/data/misc/bluetooth/logs': 0.010s
+taking late screenshot
+drop_root_user(): already running as Shell
+Error opening file:  (No such file or directory)
+*** command '/system/bin/screencap -p ' failed: exit code 1
+Failed to take screenshot on 
+logcat read failure
+*** command 'logcat -L -b all -v threadtime -v printable -v uid -d *:v' failed: exit code 1
+AddAnrTraceDir(): dump_traces_file=/data/anr/dumptrace_EbnRlR, anr_traces_dir=/data/anr
+Dumping current ANR traces (/data/anr/dumptrace_EbnRlR) to the main bugreport entry
+Error unlinking temporary trace path /data/anr/dumptrace_EbnRlR: Permission denied
+execvp on command '10 netcfg' failed (error: Permission denied)
+*** command '10 netcfg' failed: exit code 1
+Adjusting max progress from 6066 to 6682
+execvp on command 'parse_radio_log /proc/last_radio_log' failed (error: Permission denied)
+*** command 'parse_radio_log /proc/last_radio_log' failed: exit code 1
+No IDumpstateDevice implementation
+Can't find service: android.service.gatekeeper.IGateKeeperService
+Adding main entry (bugreport-sanders_n-OPS28.65-36-14-2025-08-04-12-14-26.txt) from /data/user_de/0/com.android.shell/files/bugreports/bugreport-sanders_n-OPS28.65-36-14-2025-08-04-12-14-26.tmp to .zip bugreport
+dumpstate id 1 finished around 2025/08/04 12:15:25 (59 s)
+Adding zip text entry main_entry.txt
+dumpstate_log.txt entry on zip file logged up to here

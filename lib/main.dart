@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:ui';
 import 'seller_portal_screen.dart';
-import 'mobile_number_modal.dart';
 import 'supabase_service.dart';
+import 'services/auth_service.dart';
 import 'screens/developer_dashboard_screen.dart';
 import 'screens/customer_portal_screen.dart';
+import 'screens/customer_product_catalog_screen.dart';
+import 'screens/seller_dashboard_screen.dart';
 
 // Firebase imports
 import 'package:firebase_core/firebase_core.dart';
@@ -27,28 +29,31 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   bool _isLoading = true;
+  bool _isLoggedIn = false;
+  String? _userRole;
+  Map<String, dynamic>? _userData;
 
   @override
   void initState() {
     super.initState();
-    _initializeSupabase();
+    _initializeApp();
   }
 
-  Future<void> _initializeSupabase() async {
+  Future<void> _initializeApp() async {
     try {
       // Initialize Firebase first
       if (kDebugMode) {
         print('🔥 Initializing Firebase...');
       }
-      
+
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
       );
-      
+
       if (kDebugMode) {
         print('✅ Firebase initialized successfully');
       }
-      
+
       // Initialize Supabase with your project credentials
       // Replace these with your actual Supabase URL and anon key
       await SupabaseService().initialize(
@@ -59,6 +64,9 @@ class _MyAppState extends State<MyApp> {
 
       // Initialize FCM Service
       await _initializeFCMService();
+
+      // Check for existing login session
+      await _checkExistingSession();
     } catch (e) {
       // Handle initialization error
       print('Initialization error: $e');
@@ -76,7 +84,7 @@ class _MyAppState extends State<MyApp> {
       await fcmService.initialize(
         onNotificationTapped: _handleNotificationTapped,
       );
-      
+
       if (kDebugMode) {
         print('✅ FCM Service initialized successfully');
       }
@@ -119,6 +127,65 @@ class _MyAppState extends State<MyApp> {
     // to navigate to the appropriate screen based on the URL
   }
 
+  /// Check for existing login session
+  Future<void> _checkExistingSession() async {
+    try {
+      final authService = AuthService();
+
+      // Check if user is logged in and session is valid
+      final isLoggedIn = await authService.isLoggedIn();
+      final isSessionValid = await authService.isSessionValid();
+
+      if (isLoggedIn && isSessionValid) {
+        final userRole = await authService.getUserRole();
+        final userData = await authService.getUserData();
+
+        if (mounted) {
+          setState(() {
+            _isLoggedIn = true;
+            _userRole = userRole;
+            _userData = userData;
+            _isLoading = false;
+          });
+        }
+
+        if (kDebugMode) {
+          print('✅ Found valid session for $userRole');
+        }
+      } else {
+        // Clear invalid session
+        if (isLoggedIn && !isSessionValid) {
+          await authService.clearSession();
+          if (kDebugMode) {
+            print('🗑️ Cleared expired session');
+          }
+        }
+
+        if (mounted) {
+          setState(() {
+            _isLoggedIn = false;
+            _userRole = null;
+            _userData = null;
+            _isLoading = false;
+          });
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error checking session: $e');
+      }
+
+      if (mounted) {
+        setState(() {
+          _isLoggedIn = false;
+          _userRole = null;
+          _userData = null;
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -136,8 +203,23 @@ class _MyAppState extends State<MyApp> {
         ),
         useMaterial3: true,
       ),
-      home: const LandingScreen(),
+      home: _getHomeScreen(),
     );
+  }
+
+  /// Get the appropriate home screen based on login state
+  Widget _getHomeScreen() {
+    // If user is logged in, navigate to appropriate portal
+    if (_isLoggedIn && _userData != null) {
+      if (_userRole == 'customer') {
+        return CustomerProductCatalogScreen(customer: _userData!);
+      } else if (_userRole == 'seller') {
+        return SellerDashboardScreen(seller: _userData!);
+      }
+    }
+
+    // Default to landing screen for new users
+    return const LandingScreen();
   }
 }
 

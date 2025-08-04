@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../supabase_service.dart';
 import '../services/otp_service_fallback.dart';
+import '../services/auth_service.dart';
 import 'customer_product_catalog_screen.dart';
 
 class CustomerPortalScreen extends StatefulWidget {
@@ -19,6 +20,7 @@ class _CustomerPortalScreenState extends State<CustomerPortalScreen> {
 
   final SupabaseService _supabaseService = SupabaseService();
   final OTPServiceFallback _otpService = OTPServiceFallback();
+  final AuthService _authService = AuthService();
 
   bool _isLoading = false;
   bool _otpSent = false;
@@ -476,6 +478,9 @@ class _CustomerPortalScreenState extends State<CustomerPortalScreen> {
         );
         customer = customers.first;
       }
+
+      // Save customer session for persistent login
+      await _authService.saveCustomerSession(customer);
 
       // Navigate to customer product catalog
       if (mounted) {

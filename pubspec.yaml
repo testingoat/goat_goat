@@ -44,9 +44,14 @@ dependencies:
   # Internationalization and date formatting
   intl: ^0.19.0
 
+  # Persistent storage for login sessions
+  shared_preferences: ^2.2.2
+
   # Firebase dependencies for FCM push notifications
-  firebase_core: ^3.8.0
-  firebase_messaging: ^15.1.4
+  # TEMPORARY DOWNGRADE: Using older versions compatible with VS 2019
+  # For production, upgrade to Visual Studio Build Tools 2022 and use latest versions
+  firebase_core: ^2.24.2
+  firebase_messaging: ^14.7.10
 
   # Local notifications for foreground handling
   flutter_local_notifications: ^17.2.3

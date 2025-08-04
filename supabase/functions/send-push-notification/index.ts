@@ -405,28 +405,144 @@ serve(async (req) => {
 
     // Log notification in database for audit trail
     if (admin_id) {
-      const { error: logError } = await supabase
-        .from('admin_action_logs')
-        .insert({
-          admin_id,
-          action: 'send_push_notification',
-          resource_type: 'notification',
-          resource_id: null,
-          metadata: {
-            title,
-            target_user_id,
-            target_user_type,
-            topic,
-            fcm_message_name: fcmResult.name, // HTTP v1 API returns 'name' instead of 'message_id'
-            api_version: 'http_v1',
-            project_id: serviceAccount.project_id,
-            success: 1,
-            failure: 0,
-          },
-        })
+      try {
+        console.log('📝 Attempting to log admin action...')
+        const { error: logError } = await supabase
+          .from('admin_action_logs')
+          .insert({
+            admin_id,
+            action: 'send_push_notification',
+            resource_type: 'notification',
+            resource_id: null,
+            metadata: {
+              title,
+              target_user_id,
+              target_user_type,
+              topic,
+              fcm_message_name: fcmResult.name, // HTTP v1 API returns 'name' instead of 'message_id'
+              api_version: 'http_v1',
+              project_id: serviceAccount.project_id,
+              success: 1,
+              failure: 0,
+            },
+          })
 
-      if (logError) {
-        console.error('Error logging notification:', logError)
+        if (logError) {
+          console.error('❌ Error logging admin action:', logError)
+          console.error('❌ Admin ID:', admin_id)
+          console.error('❌ Error details:', JSON.stringify(logError, null, 2))
+          // Don't fail the request for logging errors
+        } else {
+          console.log('✅ Admin action logged successfully')
+        }
+      } catch (adminLogError) {
+        console.error('❌ Exception in admin action logging:', adminLogError)
+        // Don't fail the request for logging errors
+      }
+    }
+
+    // Create individual notification_logs entries for topic-based notifications
+    if (topic && admin_id) {
+      try {
+        console.log('📝 Creating individual notification logs for topic:', topic)
+
+        const notificationLogEntries = []
+
+        if (topic === 'all_users') {
+          // Get all customers and sellers
+          const { data: customers, error: customersError } = await supabase
+            .from('customers')
+            .select('id')
+
+          const { data: sellers, error: sellersError } = await supabase
+            .from('sellers')
+            .select('id')
+
+          if (!customersError && customers) {
+            for (const customer of customers) {
+              notificationLogEntries.push({
+                customer_id: customer.id,
+                notification_type: 'system',
+                title: title || 'Goat Goat',
+                message: body || 'You have a new notification',
+                delivery_method: 'push',
+                delivery_status: 'sent',
+                external_id: fcmResult.name,
+                sent_at: new Date().toISOString(),
+              })
+            }
+          }
+
+          if (!sellersError && sellers) {
+            for (const seller of sellers) {
+              notificationLogEntries.push({
+                seller_id: seller.id,
+                notification_type: 'system',
+                title: title || 'Goat Goat',
+                message: body || 'You have a new notification',
+                delivery_method: 'push',
+                delivery_status: 'sent',
+                external_id: fcmResult.name,
+                sent_at: new Date().toISOString(),
+              })
+            }
+          }
+        } else if (topic === 'customers') {
+          // Get all customers
+          const { data: customers, error: customersError } = await supabase
+            .from('customers')
+            .select('id')
+
+          if (!customersError && customers) {
+            for (const customer of customers) {
+              notificationLogEntries.push({
+                customer_id: customer.id,
+                notification_type: 'system',
+                title: title || 'Goat Goat',
+                message: body || 'You have a new notification',
+                delivery_method: 'push',
+                delivery_status: 'sent',
+                external_id: fcmResult.name,
+                sent_at: new Date().toISOString(),
+              })
+            }
+          }
+        } else if (topic === 'sellers') {
+          // Get all sellers
+          const { data: sellers, error: sellersError } = await supabase
+            .from('sellers')
+            .select('id')
+
+          if (!sellersError && sellers) {
+            for (const seller of sellers) {
+              notificationLogEntries.push({
+                seller_id: seller.id,
+                notification_type: 'system',
+                title: title || 'Goat Goat',
+                message: body || 'You have a new notification',
+                delivery_method: 'push',
+                delivery_status: 'sent',
+                external_id: fcmResult.name,
+                sent_at: new Date().toISOString(),
+              })
+            }
+          }
+        }
+
+        // Insert notification logs in batches
+        if (notificationLogEntries.length > 0) {
+          const { error: insertError } = await supabase
+            .from('notification_logs')
+            .insert(notificationLogEntries)
+
+          if (insertError) {
+            console.error('❌ Error creating notification logs:', insertError)
+          } else {
+            console.log(`✅ Created ${notificationLogEntries.length} notification log entries`)
+          }
+        }
+      } catch (logCreationError) {
+        console.error('❌ Error creating individual notification logs:', logCreationError)
         // Don't fail the request for logging errors
       }
     }

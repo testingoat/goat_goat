@@ -325,7 +325,7 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen>
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
+                  color: Colors.black.withValues(alpha: 0.05),
                   blurRadius: 10,
                   offset: const Offset(0, 2),
                 ),
@@ -502,7 +502,7 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen>
             ),
             const SizedBox(height: 16),
             Text(
-              'No ${_currentFilter} reviews',
+              'No $_currentFilter reviews',
               style: Theme.of(context).textTheme.headlineSmall,
             ),
             const SizedBox(height: 8),

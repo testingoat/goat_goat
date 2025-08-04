@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'dart:ui';
 import '../supabase_service.dart';
 import '../services/odoo_service.dart';
+import '../services/auth_service.dart';
+import '../services/seller_notification_service.dart';
 import 'product_management_screen.dart';
 import 'seller_profile_screen.dart';
+import 'seller_notifications_screen.dart';
 import '../seller_portal_screen.dart';
 
 class SellerDashboardScreen extends StatefulWidget {
@@ -18,14 +21,19 @@ class SellerDashboardScreen extends StatefulWidget {
 class _SellerDashboardScreenState extends State<SellerDashboardScreen> {
   final SupabaseService _supabaseService = SupabaseService();
   final OdooService _odooService = OdooService();
+  final AuthService _authService = AuthService();
+  final SellerNotificationService _notificationService =
+      SellerNotificationService();
 
   bool _isLoading = true;
   Map<String, dynamic> _dashboardData = {};
+  int _notificationCount = 0;
 
   @override
   void initState() {
     super.initState();
     _loadDashboardData();
+    _updateNotificationCount();
   }
 
   Future<void> _logout() async {
@@ -53,19 +61,29 @@ class _SellerDashboardScreenState extends State<SellerDashboardScreen> {
     );
 
     if (shouldLogout == true && mounted) {
-      // Sign out from Supabase auth
       try {
-        await _supabaseService.signOut();
-        print('🔐 Seller signed out successfully');
-      } catch (e) {
-        print('🔐 Error signing out: $e');
-      }
+        // Clear the session using auth service
+        await _authService.clearSession();
 
-      // Navigate back to seller portal (login screen)
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (context) => const SellerPortalScreen()),
-        (route) => false,
-      );
+        // Also sign out from Supabase auth if needed
+        await _supabaseService.signOut();
+        print('🔐 Seller logged out successfully');
+
+        // Navigate back to main screen (replace entire navigation stack)
+        Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+      } catch (e) {
+        print('❌ Error during logout: $e');
+
+        // Show error message
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Logout failed: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
     }
   }
 
@@ -219,6 +237,38 @@ class _SellerDashboardScreenState extends State<SellerDashboardScreen> {
     }
   }
 
+  /// Update notification count for badge display
+  Future<void> _updateNotificationCount() async {
+    try {
+      final count = await _notificationService.getUnreadNotificationCount(
+        widget.seller['id'],
+      );
+      if (mounted) {
+        setState(() {
+          _notificationCount = count;
+        });
+      }
+    } catch (e) {
+      // Silently handle notification count update errors
+      print('Error updating notification count: $e');
+    }
+  }
+
+  /// Navigate to notifications screen
+  Future<void> _navigateToNotifications() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => SellerNotificationsScreen(seller: widget.seller),
+      ),
+    );
+
+    // Update notification count when returning from notifications screen
+    if (result != null || mounted) {
+      _updateNotificationCount();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -305,11 +355,43 @@ class _SellerDashboardScreenState extends State<SellerDashboardScreen> {
           icon: const Icon(Icons.refresh, color: Colors.white),
           onPressed: _loadDashboardData,
         ),
-        IconButton(
-          icon: const Icon(Icons.notifications_outlined, color: Colors.white),
-          onPressed: () {
-            // TODO: Navigate to notifications
-          },
+        // Notifications Button with Badge
+        Stack(
+          children: [
+            IconButton(
+              icon: const Icon(
+                Icons.notifications_outlined,
+                color: Colors.white,
+              ),
+              onPressed: _navigateToNotifications,
+              tooltip: 'Notifications',
+            ),
+            if (_notificationCount > 0)
+              Positioned(
+                right: 8,
+                top: 8,
+                child: Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    color: Colors.red,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  constraints: const BoxConstraints(
+                    minWidth: 16,
+                    minHeight: 16,
+                  ),
+                  child: Text(
+                    '$_notificationCount',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+          ],
         ),
         IconButton(
           icon: const Icon(Icons.logout, color: Colors.white),
