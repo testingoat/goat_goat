@@ -281,6 +281,32 @@ class SupabaseService {
     }
   }
 
+  /// Update customer profile
+  Future<Map<String, dynamic>> updateCustomer(
+    String customerId,
+    Map<String, dynamic> updates,
+  ) async {
+    try {
+      final response = await _supabase
+          .from('customers')
+          .update(updates)
+          .eq('id', customerId)
+          .select()
+          .single();
+
+      return {
+        'success': true,
+        'customer': response,
+        'message': 'Customer updated successfully',
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Failed to update customer: ${e.toString()}',
+      };
+    }
+  }
+
   // ===== ORDER MANAGEMENT =====
 
   /// Get orders with customer and item details

@@ -26,5 +26,7 @@
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
 	<string>1:188247457782:ios:30281a5bef41d1882f91d7</string>
+	<key>GOOGLE_MAPS_API_KEY</key>
+	<string>AIzaSyDOBBimUu_eGMwsXZUqrNFk3puT5rMWbig</string>
 </dict>
 </plist>

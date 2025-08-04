@@ -1920,7 +1920,7 @@ Environment Variables (Supabase Secrets):
 
 \# Required in Edge Functions
 
-GOOGLE\_MAPS\_API\_KEY=AIzaSy...              # Google Maps API key
+GOOGLE\_MAPS\_API\_KEY=AIzaSyDOBBimUu_eGMwsXZUqrNFk3puT5rMWbig              # Google Maps API key
 
 SUPABASE\_URL=https://project.supabase.co   # Auto-provided
 

@@ -4,7 +4,9 @@ import '../services/shopping_cart_service.dart';
 import '../services/customer_notification_service.dart';
 import '../services/auth_service.dart';
 import '../config/feature_flags.dart';
+import '../config/maps_config.dart';
 import '../widgets/product_review_widget.dart';
+import '../widgets/delivery_location_section.dart';
 import 'customer_order_history_screen.dart';
 import 'customer_shopping_cart_screen.dart';
 import 'customer_notifications_screen.dart';
@@ -103,6 +105,23 @@ class _CustomerProductCatalogScreenState
             children: [
               _buildAppBar(),
               _buildSearchBar(),
+              // Google Maps delivery location section (feature flagged)
+              if (kEnableCatalogMap)
+                DeliveryLocationSection(
+                  customerId: widget.customer['id'],
+                  onLocationSelected: (locationData) {
+                    // Handle location selection if needed
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Delivery location updated: ${locationData['address']}',
+                        ),
+                        backgroundColor: const Color(0xFF059669),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  },
+                ),
               Expanded(
                 child: _isLoading ? _buildLoadingState() : _buildProductGrid(),
               ),
@@ -151,10 +170,7 @@ class _CustomerProductCatalogScreenState
                   'Welcome, ${widget.customer['full_name']}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: Colors.white70,
-                  ),
+                  style: const TextStyle(fontSize: 13, color: Colors.white70),
                 ),
               ],
             ),
@@ -166,7 +182,11 @@ class _CustomerProductCatalogScreenState
             children: [
               if (FeatureFlags.isEnabled('order_history'))
                 IconButton(
-                  icon: const Icon(Icons.history, color: Colors.white, size: 22),
+                  icon: const Icon(
+                    Icons.history,
+                    color: Colors.white,
+                    size: 22,
+                  ),
                   onPressed: () => _navigateToOrderHistory(),
                   tooltip: 'Order History',
                 ),
@@ -174,7 +194,11 @@ class _CustomerProductCatalogScreenState
                 clipBehavior: Clip.none,
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.notifications, color: Colors.white, size: 22),
+                    icon: const Icon(
+                      Icons.notifications,
+                      color: Colors.white,
+                      size: 22,
+                    ),
                     onPressed: () => _navigateToNotifications(),
                     tooltip: 'Notifications',
                   ),
@@ -194,7 +218,10 @@ class _CustomerProductCatalogScreenState
                             ),
                           ],
                         ),
-                        constraints: const BoxConstraints(minWidth: 14, minHeight: 14),
+                        constraints: const BoxConstraints(
+                          minWidth: 14,
+                          minHeight: 14,
+                        ),
                         child: Text(
                           '$_notificationCount',
                           style: const TextStyle(
@@ -212,7 +239,11 @@ class _CustomerProductCatalogScreenState
                 clipBehavior: Clip.none,
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.shopping_cart, color: Colors.white, size: 22),
+                    icon: const Icon(
+                      Icons.shopping_cart,
+                      color: Colors.white,
+                      size: 22,
+                    ),
                     onPressed: () => _navigateToShoppingCart(),
                     tooltip: 'Shopping Cart',
                   ),
@@ -232,7 +263,10 @@ class _CustomerProductCatalogScreenState
                             ),
                           ],
                         ),
-                        constraints: const BoxConstraints(minWidth: 14, minHeight: 14),
+                        constraints: const BoxConstraints(
+                          minWidth: 14,
+                          minHeight: 14,
+                        ),
                         child: Text(
                           '$_cartItemCount',
                           style: const TextStyle(
@@ -247,7 +281,11 @@ class _CustomerProductCatalogScreenState
                 ],
               ),
               PopupMenuButton<String>(
-                icon: const Icon(Icons.more_vert, color: Colors.white, size: 22),
+                icon: const Icon(
+                  Icons.more_vert,
+                  color: Colors.white,
+                  size: 22,
+                ),
                 onSelected: (value) {
                   if (value == 'logout') {
                     _showLogoutDialog();
@@ -293,9 +331,16 @@ class _CustomerProductCatalogScreenState
         decoration: InputDecoration(
           hintText: 'Search for meat products...',
           hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 14),
-          prefixIcon: const Icon(Icons.search, color: Color(0xFF059669), size: 20),
+          prefixIcon: const Icon(
+            Icons.search,
+            color: Color(0xFF059669),
+            size: 20,
+          ),
           isDense: true,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 10,
+          ),
           suffixIcon: _searchQuery.isNotEmpty
               ? IconButton(
                   icon: const Icon(Icons.clear, size: 18),
@@ -409,12 +454,12 @@ class _CustomerProductCatalogScreenState
 
         return GestureDetector(
           onTapDown: (_) => setInnerState(() => isPressed = true),
-          onTapUp:   (_) => setInnerState(() => isPressed = false),
+          onTapUp: (_) => setInnerState(() => isPressed = false),
           onTapCancel: () => setInnerState(() => isPressed = false),
           onTap: () => _navigateToProductDetails(product),
           child: MouseRegion(
             onEnter: (_) => setInnerState(() => isHovered = true),
-            onExit:  (_) => setInnerState(() => isHovered = false),
+            onExit: (_) => setInnerState(() => isHovered = false),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               curve: Curves.easeInOut,
@@ -425,7 +470,9 @@ class _CustomerProductCatalogScreenState
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: isHovered ? 0.1 : 0.05),
+                    color: Colors.black.withValues(
+                      alpha: isHovered ? 0.1 : 0.05,
+                    ),
                     blurRadius: isHovered ? 12 : 8,
                     offset: Offset(0, isHovered ? 4 : 2),
                   ),
@@ -441,9 +488,9 @@ class _CustomerProductCatalogScreenState
                       duration: const Duration(milliseconds: 200),
                       height: 100,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF059669).withValues(
-                          alpha: isHovered ? 0.15 : 0.1,
-                        ),
+                        color: const Color(
+                          0xFF059669,
+                        ).withValues(alpha: isHovered ? 0.15 : 0.1),
                         borderRadius: const BorderRadius.only(
                           topLeft: Radius.circular(12),
                           topRight: Radius.circular(12),
@@ -552,53 +599,65 @@ class _CustomerProductCatalogScreenState
   }
 
   /// Navigate to product reviews screen with Hero animation
- void _navigateToProductReviews(Map<String, dynamic> product) {
-   Navigator.push(
-     context,
-     PageRouteBuilder(
-       pageBuilder: (context, animation, secondaryAnimation) =>
-         CustomerProductReviewsScreen(
-           product: product,
-           customer: widget.customer,
-         ),
-       transitionsBuilder: (context, animation, secondaryAnimation, child) {
-         const begin = Offset(1.0, 0.0);
-         const end = Offset.zero;
-         const curve = Curves.easeInOutCubic;
+  void _navigateToProductReviews(Map<String, dynamic> product) {
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            CustomerProductReviewsScreen(
+              product: product,
+              customer: widget.customer,
+            ),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          const begin = Offset(1.0, 0.0);
+          const end = Offset.zero;
+          const curve = Curves.easeInOutCubic;
 
-         var tween = Tween(begin: begin, end: end).chain(
-           CurveTween(curve: curve),
-         );
+          var tween = Tween(
+            begin: begin,
+            end: end,
+          ).chain(CurveTween(curve: curve));
 
-         return SlideTransition(
-           position: animation.drive(tween),
-           child: child,
-         );
-       },
-       transitionDuration: const Duration(milliseconds: 300),
-     ),
-   );
- }
+          return SlideTransition(
+            position: animation.drive(tween),
+            child: child,
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 300),
+      ),
+    );
+  }
 
- /// Navigate to product details screen (UI-only, preserves logic)
- void _navigateToProductDetails(Map<String, dynamic> product) {
-   Navigator.push(
-     context,
-     PageRouteBuilder(
-       pageBuilder: (context, animation, secondaryAnimation) =>
-           CustomerProductDetailsScreen(product: product, customer: widget.customer),
-       transitionsBuilder: (context, animation, secondaryAnimation, child) {
-         final tween = Tween(begin: const Offset(0.0, 0.05), end: Offset.zero)
-             .chain(CurveTween(curve: Curves.easeOutCubic));
-         return FadeTransition(
-           opacity: CurvedAnimation(parent: animation, curve: Curves.easeOutQuad),
-           child: SlideTransition(position: animation.drive(tween), child: child),
-         );
-       },
-       transitionDuration: const Duration(milliseconds: 250),
-     ),
-   );
- }
+  /// Navigate to product details screen (UI-only, preserves logic)
+  void _navigateToProductDetails(Map<String, dynamic> product) {
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            CustomerProductDetailsScreen(
+              product: product,
+              customer: widget.customer,
+            ),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          final tween = Tween(
+            begin: const Offset(0.0, 0.05),
+            end: Offset.zero,
+          ).chain(CurveTween(curve: Curves.easeOutCubic));
+          return FadeTransition(
+            opacity: CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeOutQuad,
+            ),
+            child: SlideTransition(
+              position: animation.drive(tween),
+              child: child,
+            ),
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 250),
+      ),
+    );
+  }
 
   Future<void> _addToCart(Map<String, dynamic> product) async {
     try {

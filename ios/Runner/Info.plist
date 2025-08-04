@@ -52,5 +52,11 @@
 		<string>fetch</string>
 		<string>remote-notification</string>
 	</array>
+
+	<!-- Location permissions for Google Maps -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>This app needs location access to show your current location and help you set your delivery address for fresh meat products.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>This app needs location access to show your current location and help you set your delivery address for fresh meat products.</string>
 </dict>
 </plist>

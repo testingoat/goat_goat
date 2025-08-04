@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Google Maps API Key -->
+    <!-- TODO: Replace with your actual Google Maps API key -->
+    <!-- Get your API key from: https://console.cloud.google.com/google/maps-apis -->
+    <string name="google_maps_api_key">AIzaSyDOBBimUu_eGMwsXZUqrNFk3puT5rMWbig</string>
+</resources>
