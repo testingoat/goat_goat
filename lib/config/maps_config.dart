@@ -29,6 +29,22 @@ const bool kEnableDeliveryZones = false;
 /// Enable calculating delivery fees based on distance
 const bool kEnableDeliveryFees = false;
 
+/// Phase C.4: Admin Delivery Rate Management
+/// Enable admin panel delivery fee configuration (Phase 1-5)
+const bool kEnableAdminDeliveryRates = false; // Start disabled for safe rollout
+
+/// Phase C.4: Real-time Rate Updates
+/// Enable real-time config updates from admin panel (Phase 4+)
+const bool kEnableRealtimeRateUpdates = false;
+
+/// Phase C.4: Advanced Multipliers
+/// Enable dynamic pricing multipliers (peak hours, weather, demand) (Phase 3+)
+const bool kEnableAdvancedMultipliers = false;
+
+/// Phase C.4: Delivery Fees in Cart
+/// Show delivery fees in shopping cart summary (Phase 6+)
+const bool kDeliveryFeesShowInCart = false;
+
 /// Default location coordinates (Bangalore, India)
 /// Used as fallback when user location is not available
 const double kDefaultLatitude = 12.9716;
