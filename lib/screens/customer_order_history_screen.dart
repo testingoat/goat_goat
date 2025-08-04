@@ -16,8 +16,7 @@ import '../config/feature_flags.dart';
 class CustomerOrderHistoryScreen extends StatefulWidget {
   final Map<String, dynamic> customer;
 
-  const CustomerOrderHistoryScreen({Key? key, required this.customer})
-    : super(key: key);
+  const CustomerOrderHistoryScreen({super.key, required this.customer});
 
   @override
   State<CustomerOrderHistoryScreen> createState() =>
@@ -515,7 +514,7 @@ class _CustomerOrderHistoryScreenState
 
     if (difference == 0) return 'Today';
     if (difference == 1) return 'Yesterday';
-    if (difference < 7) return '${difference} days ago';
+    if (difference < 7) return '$difference days ago';
 
     return '${date.day}/${date.month}/${date.year}';
   }
@@ -537,7 +536,7 @@ class _CustomerOrderHistoryScreenState
 class OrderDetailsDialog extends StatefulWidget {
   final Map<String, dynamic> order;
 
-  const OrderDetailsDialog({Key? key, required this.order}) : super(key: key);
+  const OrderDetailsDialog({super.key, required this.order});
 
   @override
   State<OrderDetailsDialog> createState() => _OrderDetailsDialogState();

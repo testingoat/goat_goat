@@ -156,7 +156,7 @@ class FCMTestService {
         details: {
           'has_token': hasToken,
           'token_length': token?.length ?? 0,
-          'token_preview': hasToken ? '${token!.substring(0, 20)}...' : null,
+          'token_preview': hasToken ? '${token.substring(0, 20)}...' : null,
         },
         message: hasToken 
             ? 'FCM token obtained successfully'

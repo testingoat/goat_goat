@@ -27,8 +27,8 @@ class _DeveloperDashboardScreenState extends State<DeveloperDashboardScreen>
 
   // Loading states
   bool _isLoading = true;
-  String _selectedFilter = 'all';
-  String _searchQuery = '';
+  final String _selectedFilter = 'all';
+  final String _searchQuery = '';
 
   @override
   void initState() {

@@ -11,11 +11,43 @@ import 'screens/seller_dashboard_screen.dart';
 
 // Firebase imports
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'firebase_options.dart';
 import 'services/fcm_service.dart';
+import 'dart:convert';
+
+// Background message handler for system notifications
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  // Initialize Firebase for background context
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  if (kDebugMode) {
+    print("🔔 Background message received: ${message.messageId}");
+    print("📱 Title: ${message.notification?.title}");
+    print("📝 Body: ${message.notification?.body}");
+  }
+
+  // Show system notification (this appears in notification panel)
+  try {
+    final fcmService = FCMService();
+    await fcmService.showLocalNotification(
+      title: message.notification?.title ?? 'Goat Goat',
+      body: message.notification?.body ?? 'You have a new notification',
+      payload: jsonEncode(message.data),
+    );
+  } catch (e) {
+    if (kDebugMode) {
+      print("❌ Error showing background notification: $e");
+    }
+  }
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Register background message handler for system notifications
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
   runApp(const MyApp());
 }

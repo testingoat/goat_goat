@@ -6,7 +6,7 @@ void main() {
 }
 
 class MinimalAdminApp extends StatelessWidget {
-  const MinimalAdminApp({Key? key}) : super(key: key);
+  const MinimalAdminApp({super.key});
 
   @override
   Widget build(BuildContext context) {

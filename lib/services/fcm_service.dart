@@ -8,8 +8,6 @@ import 'package:firebase_messaging/firebase_messaging.dart'
     if (dart.library.html) 'fcm_web_stub.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart'
     if (dart.library.html) 'fcm_web_stub.dart';
-import 'package:permission_handler/permission_handler.dart'
-    if (dart.library.html) 'fcm_web_stub.dart';
 
 /// Firebase Cloud Messaging Service for Goat Goat
 ///
@@ -254,7 +252,7 @@ class FCMService {
       if (_fcmToken != null) {
         if (kDebugMode) {
           print('🔑 FCM Token: ${_fcmToken!.substring(0, 20)}...');
-          print('📱 Device Info: ${defaultTargetPlatform}');
+          print('📱 Device Info: $defaultTargetPlatform');
           print('🔧 Token Length: ${_fcmToken!.length}');
           print('⏰ Token Generated At: ${DateTime.now().toIso8601String()}');
         }
@@ -663,6 +661,73 @@ class FCMService {
     }
 
     return diagnostics;
+  }
+
+  /// Show local notification (appears in system notification panel)
+  Future<void> showLocalNotification({
+    required String title,
+    required String body,
+    String? payload,
+    String? channelId,
+  }) async {
+    // Skip on Windows
+    if (defaultTargetPlatform == TargetPlatform.windows) {
+      return;
+    }
+
+    if (!_enableLocalNotifications) {
+      if (kDebugMode) {
+        print('🔔 Local notifications disabled by feature flag');
+      }
+      return;
+    }
+
+    try {
+      // Compatible with all Android versions
+      const AndroidNotificationDetails androidPlatformChannelSpecifics =
+          AndroidNotificationDetails(
+            'goat_goat_notifications', // Channel ID
+            'Goat Goat Notifications', // Channel name
+            channelDescription: 'Notifications from Goat Goat app',
+            importance: Importance.high,
+            priority: Priority.high,
+            showWhen: true,
+            enableVibration: true,
+            playSound: true,
+            // Compatible icon works on all versions
+            icon: '@drawable/ic_notification',
+            color: Color(0xFF059669),
+          );
+
+      // iOS settings
+      const DarwinNotificationDetails iOSPlatformChannelSpecifics =
+          DarwinNotificationDetails(
+            presentAlert: true,
+            presentBadge: true,
+            presentSound: true,
+          );
+
+      const NotificationDetails platformChannelSpecifics = NotificationDetails(
+        android: androidPlatformChannelSpecifics,
+        iOS: iOSPlatformChannelSpecifics,
+      );
+
+      await _localNotifications.show(
+        DateTime.now().millisecondsSinceEpoch ~/ 1000, // Unique ID
+        title,
+        body,
+        platformChannelSpecifics,
+        payload: payload,
+      );
+
+      if (kDebugMode) {
+        print('✅ Local notification shown: $title');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error showing local notification: $e');
+      }
+    }
   }
 }
 

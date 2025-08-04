@@ -876,7 +876,7 @@ class _ProductManagementScreenState extends State<ProductManagementScreen>
                   ? Colors.orange
                   : const Color(0xFF059669),
             ),
-            child: Text('${isActive ? 'Deactivate' : 'Activate'}'),
+            child: Text(isActive ? 'Deactivate' : 'Activate'),
           ),
         ],
       ),

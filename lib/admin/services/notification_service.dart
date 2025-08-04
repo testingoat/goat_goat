@@ -183,12 +183,15 @@ class NotificationService {
       if (templateName != null) updateData['template_name'] = templateName;
       if (templateType != null) updateData['template_type'] = templateType;
       if (titleTemplate != null) updateData['title_template'] = titleTemplate;
-      if (messageTemplate != null)
+      if (messageTemplate != null) {
         updateData['message_template'] = messageTemplate;
-      if (templateVariables != null)
+      }
+      if (templateVariables != null) {
         updateData['template_variables'] = templateVariables;
-      if (deliveryMethods != null)
+      }
+      if (deliveryMethods != null) {
         updateData['delivery_methods'] = deliveryMethods;
+      }
       if (isActive != null) updateData['is_active'] = isActive;
 
       final response = await _supabase

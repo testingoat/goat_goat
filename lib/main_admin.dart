@@ -44,7 +44,7 @@ void main() async {
 }
 
 class GoatGoatAdminApp extends StatelessWidget {
-  const GoatGoatAdminApp({Key? key}) : super(key: key);
+  const GoatGoatAdminApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -71,7 +71,7 @@ class GoatGoatAdminApp extends StatelessWidget {
 }
 
 class AdminAppWrapper extends StatefulWidget {
-  const AdminAppWrapper({Key? key}) : super(key: key);
+  const AdminAppWrapper({super.key});
 
   @override
   State<AdminAppWrapper> createState() => _AdminAppWrapperState();

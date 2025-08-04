@@ -16,8 +16,7 @@ import '../config/feature_flags.dart';
 class CustomerShoppingCartScreen extends StatefulWidget {
   final Map<String, dynamic> customer;
 
-  const CustomerShoppingCartScreen({Key? key, required this.customer})
-    : super(key: key);
+  const CustomerShoppingCartScreen({super.key, required this.customer});
 
   @override
   State<CustomerShoppingCartScreen> createState() =>

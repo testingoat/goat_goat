@@ -37,7 +37,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
   int _resendCountdown = 30;
   Timer? _timer;
   String _errorMessage = '';
-  String _demoOtp = ''; // For showing demo OTP
+  final String _demoOtp = ''; // For showing demo OTP
 
   @override
   void initState() {

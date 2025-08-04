@@ -4,9 +4,11 @@ import '../services/shopping_cart_service.dart';
 import '../services/customer_notification_service.dart';
 import '../services/auth_service.dart';
 import '../config/feature_flags.dart';
+import '../widgets/product_review_widget.dart';
 import 'customer_order_history_screen.dart';
 import 'customer_shopping_cart_screen.dart';
 import 'customer_notifications_screen.dart';
+import 'customer_product_reviews_screen.dart';
 
 class CustomerProductCatalogScreen extends StatefulWidget {
   final Map<String, dynamic> customer;
@@ -112,7 +114,7 @@ class _CustomerProductCatalogScreenState
 
   Widget _buildAppBar() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -125,122 +127,143 @@ class _CustomerProductCatalogScreenState
           IconButton(
             icon: const Icon(Icons.arrow_back, color: Colors.white),
             onPressed: () => Navigator.pop(context),
+            tooltip: 'Back',
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 6),
+          // Title + subtitle take available space, single-line, ellipsis
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
                   'Fresh Meat Products',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
+                    fontSize: 18, // slightly reduced to avoid wrap
+                    fontWeight: FontWeight.w700,
                     color: Colors.white,
+                    letterSpacing: 0.2,
                   ),
                 ),
                 Text(
                   'Welcome, ${widget.customer['full_name']}',
-                  style: const TextStyle(fontSize: 14, color: Colors.white70),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Colors.white70,
+                  ),
                 ),
               ],
             ),
           ),
-          // Order History Button (Feature Flag Protected)
-          if (FeatureFlags.isEnabled('order_history'))
-            IconButton(
-              icon: const Icon(Icons.history, color: Colors.white),
-              onPressed: () => _navigateToOrderHistory(),
-              tooltip: 'Order History',
-            ),
-          // Notifications Button
-          Stack(
+          const SizedBox(width: 6),
+          // Trailing actions in a tight row so they don't squeeze title
+          Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              IconButton(
-                icon: const Icon(Icons.notifications, color: Colors.white),
-                onPressed: () => _navigateToNotifications(),
-                tooltip: 'Notifications',
-              ),
-              if (_notificationCount > 0)
-                Positioned(
-                  right: 8,
-                  top: 8,
-                  child: Container(
-                    padding: const EdgeInsets.all(2),
-                    decoration: BoxDecoration(
-                      color: Colors.red,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    constraints: const BoxConstraints(
-                      minWidth: 16,
-                      minHeight: 16,
-                    ),
-                    child: Text(
-                      '$_notificationCount',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
+              if (FeatureFlags.isEnabled('order_history'))
+                IconButton(
+                  icon: const Icon(Icons.history, color: Colors.white, size: 22),
+                  onPressed: () => _navigateToOrderHistory(),
+                  tooltip: 'Order History',
+                ),
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.notifications, color: Colors.white, size: 22),
+                    onPressed: () => _navigateToNotifications(),
+                    tooltip: 'Notifications',
+                  ),
+                  if (_notificationCount > 0)
+                    Positioned(
+                      right: 6,
+                      top: 6,
+                      child: Container(
+                        padding: const EdgeInsets.all(1.5),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          borderRadius: BorderRadius.circular(10),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.15),
+                              blurRadius: 2,
+                            ),
+                          ],
+                        ),
+                        constraints: const BoxConstraints(minWidth: 14, minHeight: 14),
+                        child: Text(
+                          '$_notificationCount',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
                       ),
-                      textAlign: TextAlign.center,
+                    ),
+                ],
+              ),
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.shopping_cart, color: Colors.white, size: 22),
+                    onPressed: () => _navigateToShoppingCart(),
+                    tooltip: 'Shopping Cart',
+                  ),
+                  if (_cartItemCount > 0)
+                    Positioned(
+                      right: 6,
+                      top: 6,
+                      child: Container(
+                        padding: const EdgeInsets.all(1.5),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          borderRadius: BorderRadius.circular(10),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.15),
+                              blurRadius: 2,
+                            ),
+                          ],
+                        ),
+                        constraints: const BoxConstraints(minWidth: 14, minHeight: 14),
+                        child: Text(
+                          '$_cartItemCount',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              PopupMenuButton<String>(
+                icon: const Icon(Icons.more_vert, color: Colors.white, size: 22),
+                onSelected: (value) {
+                  if (value == 'logout') {
+                    _showLogoutDialog();
+                  }
+                },
+                itemBuilder: (context) => const [
+                  PopupMenuItem(
+                    value: 'logout',
+                    child: Row(
+                      children: [
+                        Icon(Icons.logout, color: Colors.red),
+                        SizedBox(width: 8),
+                        Text('Logout'),
+                      ],
                     ),
                   ),
-                ),
-            ],
-          ),
-          // Shopping Cart Button
-          Stack(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.shopping_cart, color: Colors.white),
-                onPressed: () => _navigateToShoppingCart(),
-                tooltip: 'Shopping Cart',
-              ),
-              if (_cartItemCount > 0)
-                Positioned(
-                  right: 8,
-                  top: 8,
-                  child: Container(
-                    padding: const EdgeInsets.all(2),
-                    decoration: BoxDecoration(
-                      color: Colors.red,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    constraints: const BoxConstraints(
-                      minWidth: 16,
-                      minHeight: 16,
-                    ),
-                    child: Text(
-                      '$_cartItemCount',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          // Logout Button
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert, color: Colors.white),
-            onSelected: (value) {
-              if (value == 'logout') {
-                _showLogoutDialog();
-              }
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: 'logout',
-                child: Row(
-                  children: [
-                    Icon(Icons.logout, color: Colors.red),
-                    SizedBox(width: 8),
-                    Text('Logout'),
-                  ],
-                ),
+                ],
               ),
             ],
           ),
@@ -251,13 +274,13 @@ class _CustomerProductCatalogScreenState
 
   Widget _buildSearchBar() {
     return Container(
-      margin: const EdgeInsets.all(16),
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Colors.black.withValues(alpha: 0.06),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -265,12 +288,16 @@ class _CustomerProductCatalogScreenState
       ),
       child: TextField(
         controller: _searchController,
+        style: const TextStyle(fontSize: 14),
         decoration: InputDecoration(
           hintText: 'Search for meat products...',
-          prefixIcon: const Icon(Icons.search, color: Color(0xFF059669)),
+          hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 14),
+          prefixIcon: const Icon(Icons.search, color: Color(0xFF059669), size: 20),
+          isDense: true,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           suffixIcon: _searchQuery.isNotEmpty
               ? IconButton(
-                  icon: const Icon(Icons.clear),
+                  icon: const Icon(Icons.clear, size: 18),
                   onPressed: () {
                     _searchController.clear();
                     setState(() {
@@ -278,10 +305,11 @@ class _CustomerProductCatalogScreenState
                     });
                     _loadProducts();
                   },
+                  tooltip: 'Clear',
                 )
               : null,
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(10),
             borderSide: BorderSide.none,
           ),
           filled: true,
@@ -303,17 +331,27 @@ class _CustomerProductCatalogScreenState
   }
 
   Widget _buildLoadingState() {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          CircularProgressIndicator(color: Color(0xFF059669)),
-          SizedBox(height: 16),
-          Text(
-            'Loading fresh products...',
-            style: TextStyle(fontSize: 16, color: Colors.grey),
-          ),
-        ],
+    return AnimatedOpacity(
+      opacity: _isLoading ? 1.0 : 0.0,
+      duration: const Duration(milliseconds: 300),
+      child: const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF059669)),
+            ),
+            SizedBox(height: 16),
+            Text(
+              'Loading fresh products...',
+              style: TextStyle(
+                color: Color(0xFF059669),
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -347,12 +385,12 @@ class _CustomerProductCatalogScreenState
     }
 
     return GridView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        childAspectRatio: 0.72, // Further optimized to prevent any overflow
-        crossAxisSpacing: 16,
-        mainAxisSpacing: 16,
+        childAspectRatio: 0.78, // slightly shorter cards for tighter layout
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
       ),
       itemCount: _products.length,
       itemBuilder: (context, index) {
@@ -363,112 +401,180 @@ class _CustomerProductCatalogScreenState
   }
 
   Widget _buildProductCard(Map<String, dynamic> product) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Product Image - Reduced height
-          Container(
-            height: 100, // Reduced from 120 to 100
-            decoration: BoxDecoration(
-              color: const Color(0xFF059669).withValues(alpha: 0.1),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(12),
-                topRight: Radius.circular(12),
+    return StatefulBuilder(
+      builder: (context, setInnerState) {
+        bool isPressed = false;
+        bool isHovered = false;
+
+        return GestureDetector(
+          onTapDown: (_) => setInnerState(() => isPressed = true),
+          onTapUp:   (_) => setInnerState(() => isPressed = false),
+          onTapCancel: () => setInnerState(() => isPressed = false),
+          onTap: () => _navigateToProductReviews(product),
+          child: MouseRegion(
+            onEnter: (_) => setInnerState(() => isHovered = true),
+            onExit:  (_) => setInnerState(() => isHovered = false),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeInOut,
+              transform: Matrix4.identity()
+                ..scale(isPressed ? 0.95 : (isHovered ? 1.02 : 1.0)),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: isHovered ? 0.1 : 0.05),
+                    blurRadius: isHovered ? 12 : 8,
+                    offset: Offset(0, isHovered ? 4 : 2),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Product Image with Hero animation and enhanced effects
+                  Hero(
+                    tag: 'product-${product['id']}',
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      height: 100,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF059669).withValues(
+                          alpha: isHovered ? 0.15 : 0.1,
+                        ),
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(12),
+                          topRight: Radius.circular(12),
+                        ),
+                      ),
+                      child: Center(
+                        child: AnimatedScale(
+                          scale: isHovered ? 1.1 : 1.0,
+                          duration: const Duration(milliseconds: 200),
+                          child: const Icon(
+                            Icons.fastfood,
+                            size: 40,
+                            color: Color(0xFF059669),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // Product Details - Fixed height instead of Expanded
+                  Container(
+                    height: 115,
+                    padding: const EdgeInsets.all(8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Product Name
+                        Text(
+                          product['name'] ?? 'Product',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+
+                        // Price
+                        Text(
+                          '₹${product['price'] ?? 0}/kg',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            color: Color(0xFF059669),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+
+                        // Seller name - More compact
+                        if (product['sellers'] != null)
+                          Text(
+                            'by ${product['sellers']['seller_name']}',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey[600],
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+
+                        const SizedBox(height: 4),
+
+                        // Product Reviews Summary
+                        ProductReviewSummary(
+                          productId: product['id'],
+                          showFullStats: false,
+                        ),
+
+                        const Spacer(),
+
+                        // Add to Cart Button - More compact
+                        SizedBox(
+                          width: double.infinity,
+                          height: 28,
+                          child: ElevatedButton(
+                            onPressed: () => _addToCart(product),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF059669),
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 4),
+                            ),
+                            child: const Text(
+                              'Add to Cart',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
-            child: const Center(
-              child: Icon(
-                Icons.fastfood,
-                size: 40,
-                color: Color(0xFF059669),
-              ), // Reduced icon size
-            ),
           ),
+        );
+      },
+    );
+  }
 
-          // Product Details - Fixed height instead of Expanded
-          Container(
-            height: 115, // Slightly reduced height to prevent overflow
-            padding: const EdgeInsets.all(8), // Further reduced padding
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Product Name
-                Text(
-                  product['name'] ?? 'Product',
-                  style: const TextStyle(
-                    fontSize: 14, // Reduced font size
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-
-                // Price
-                Text(
-                  '₹${product['price'] ?? 0}/kg',
-                  style: const TextStyle(
-                    fontSize: 16, // Reduced font size
-                    color: Color(0xFF059669),
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 2),
-
-                // Seller name - More compact
-                if (product['sellers'] != null)
-                  Text(
-                    'by ${product['sellers']['seller_name']}',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Colors.grey[600],
-                    ), // Reduced font size
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-
-                const Spacer(),
-
-                // Add to Cart Button - More compact
-                SizedBox(
-                  width: double.infinity,
-                  height: 28, // Reduced height for button
-                  child: ElevatedButton(
-                    onPressed: () => _addToCart(product),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF059669),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                    ),
-                    child: const Text(
-                      'Add to Cart',
-                      style: TextStyle(
-                        fontSize: 11, // Reduced font size
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
+  /// Navigate to product reviews screen with Hero animation
+  void _navigateToProductReviews(Map<String, dynamic> product) {
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) =>
+          CustomerProductReviewsScreen(
+            product: product,
+            customer: widget.customer,
           ),
-        ],
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          const begin = Offset(1.0, 0.0);
+          const end = Offset.zero;
+          const curve = Curves.easeInOutCubic;
+
+          var tween = Tween(begin: begin, end: end).chain(
+            CurveTween(curve: curve),
+          );
+
+          return SlideTransition(
+            position: animation.drive(tween),
+            child: child,
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 300),
       ),
     );
   }

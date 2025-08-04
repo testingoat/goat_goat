@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'dart:ui';
 import '../supabase_service.dart';
 import '../services/odoo_service.dart';
 import '../services/auth_service.dart';
@@ -7,7 +6,6 @@ import '../services/seller_notification_service.dart';
 import 'product_management_screen.dart';
 import 'seller_profile_screen.dart';
 import 'seller_notifications_screen.dart';
-import '../seller_portal_screen.dart';
 
 class SellerDashboardScreen extends StatefulWidget {
   final Map<String, dynamic> seller;

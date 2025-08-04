@@ -3,8 +3,6 @@ import 'package:flutter/foundation.dart';
 // Conditional imports for platform-specific Firebase initialization
 import 'package:firebase_core/firebase_core.dart'
     if (dart.library.html) 'firebase_web_stub.dart';
-import 'package:firebase_messaging/firebase_messaging.dart'
-    if (dart.library.html) 'firebase_messaging_web_stub.dart';
 import 'fcm_service.dart' if (dart.library.html) 'fcm_web_stub.dart';
 
 /// Platform-aware Firebase service with zero-risk implementation

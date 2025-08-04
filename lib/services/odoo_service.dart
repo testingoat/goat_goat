@@ -185,10 +185,6 @@ class OdooService {
           .eq('id', productId)
           .single();
 
-      if (currentProduct == null) {
-        throw Exception('Product not found');
-      }
-
       final odooProductId = currentProduct['odoo_product_id'];
 
       // Update in Odoo if product exists there
