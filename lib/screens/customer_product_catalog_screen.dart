@@ -9,6 +9,7 @@ import 'customer_order_history_screen.dart';
 import 'customer_shopping_cart_screen.dart';
 import 'customer_notifications_screen.dart';
 import 'customer_product_reviews_screen.dart';
+import 'customer_product_details_screen.dart';
 
 class CustomerProductCatalogScreen extends StatefulWidget {
   final Map<String, dynamic> customer;
@@ -410,7 +411,7 @@ class _CustomerProductCatalogScreenState
           onTapDown: (_) => setInnerState(() => isPressed = true),
           onTapUp:   (_) => setInnerState(() => isPressed = false),
           onTapCancel: () => setInnerState(() => isPressed = false),
-          onTap: () => _navigateToProductReviews(product),
+          onTap: () => _navigateToProductDetails(product),
           child: MouseRegion(
             onEnter: (_) => setInnerState(() => isHovered = true),
             onExit:  (_) => setInnerState(() => isHovered = false),
@@ -551,33 +552,53 @@ class _CustomerProductCatalogScreenState
   }
 
   /// Navigate to product reviews screen with Hero animation
-  void _navigateToProductReviews(Map<String, dynamic> product) {
-    Navigator.push(
-      context,
-      PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) =>
-          CustomerProductReviewsScreen(
-            product: product,
-            customer: widget.customer,
-          ),
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          const begin = Offset(1.0, 0.0);
-          const end = Offset.zero;
-          const curve = Curves.easeInOutCubic;
+ void _navigateToProductReviews(Map<String, dynamic> product) {
+   Navigator.push(
+     context,
+     PageRouteBuilder(
+       pageBuilder: (context, animation, secondaryAnimation) =>
+         CustomerProductReviewsScreen(
+           product: product,
+           customer: widget.customer,
+         ),
+       transitionsBuilder: (context, animation, secondaryAnimation, child) {
+         const begin = Offset(1.0, 0.0);
+         const end = Offset.zero;
+         const curve = Curves.easeInOutCubic;
 
-          var tween = Tween(begin: begin, end: end).chain(
-            CurveTween(curve: curve),
-          );
+         var tween = Tween(begin: begin, end: end).chain(
+           CurveTween(curve: curve),
+         );
 
-          return SlideTransition(
-            position: animation.drive(tween),
-            child: child,
-          );
-        },
-        transitionDuration: const Duration(milliseconds: 300),
-      ),
-    );
-  }
+         return SlideTransition(
+           position: animation.drive(tween),
+           child: child,
+         );
+       },
+       transitionDuration: const Duration(milliseconds: 300),
+     ),
+   );
+ }
+
+ /// Navigate to product details screen (UI-only, preserves logic)
+ void _navigateToProductDetails(Map<String, dynamic> product) {
+   Navigator.push(
+     context,
+     PageRouteBuilder(
+       pageBuilder: (context, animation, secondaryAnimation) =>
+           CustomerProductDetailsScreen(product: product, customer: widget.customer),
+       transitionsBuilder: (context, animation, secondaryAnimation, child) {
+         final tween = Tween(begin: const Offset(0.0, 0.05), end: Offset.zero)
+             .chain(CurveTween(curve: Curves.easeOutCubic));
+         return FadeTransition(
+           opacity: CurvedAnimation(parent: animation, curve: Curves.easeOutQuad),
+           child: SlideTransition(position: animation.drive(tween), child: child),
+         );
+       },
+       transitionDuration: const Duration(milliseconds: 250),
+     ),
+   );
+ }
 
   Future<void> _addToCart(Map<String, dynamic> product) async {
     try {

@@ -130,34 +130,47 @@ class _SellerRegistrationScreenState extends State<SellerRegistrationScreen> {
   }
 
   Widget _buildHeader() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: const Color(0xFF059669), // emerald-600
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(24),
-          topRight: Radius.circular(24),
+    return SafeArea(
+      bottom: false,
+      child: Container(
+        width: double.infinity,
+        padding: EdgeInsets.only(
+          left: 8,
+          right: 16,
+          top: 8,
+          bottom: 12,
         ),
-      ),
-      child: Row(
-        children: [
-          IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white, size: 24),
-            onPressed: () {
-              Navigator.pop(context);
-            },
+        decoration: const BoxDecoration(
+          color: Color(0xFF059669), // emerald-600
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(24),
+            topRight: Radius.circular(24),
           ),
-          const SizedBox(width: 8),
-          const Text(
-            'Seller Registration',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
-              color: Colors.white,
+        ),
+        child: Row(
+          children: [
+            IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.white, size: 24),
+              onPressed: () {
+                Navigator.pop(context);
+              },
             ),
-          ),
-        ],
+            const SizedBox(width: 8),
+            const Expanded(
+              child: Text(
+                'Seller Registration',
+                maxLines: 1,
+                softWrap: false,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -234,30 +247,27 @@ class _SellerRegistrationScreenState extends State<SellerRegistrationScreen> {
           ),
         ),
         const SizedBox(height: 12),
-        Row(
+        Wrap(
+          spacing: 12,
+          runSpacing: 12,
           children: [
-            Expanded(
-              child: _buildRadioOption(
-                'Individual',
-                _selectedType == 'Individual',
-                (value) {
-                  setState(() {
-                    _selectedType = 'Individual';
-                  });
-                },
-              ),
+            _buildRadioOption(
+              'Individual',
+              _selectedType == 'Individual',
+              (value) {
+                setState(() {
+                  _selectedType = 'Individual';
+                });
+              },
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: _buildRadioOption(
-                'Registered',
-                _selectedType == 'Registered',
-                (value) {
-                  setState(() {
-                    _selectedType = 'Registered';
-                  });
-                },
-              ),
+            _buildRadioOption(
+              'Registered',
+              _selectedType == 'Registered',
+              (value) {
+                setState(() {
+                  _selectedType = 'Registered';
+                });
+              },
             ),
           ],
         ),
@@ -278,39 +288,26 @@ class _SellerRegistrationScreenState extends State<SellerRegistrationScreen> {
           ),
         ),
         const SizedBox(height: 12),
-        Row(
+        Wrap(
+          spacing: 12,
+          runSpacing: 12,
           children: [
-            Expanded(
-              child: _buildRadioOption('Meat', _selectedSellerType == 'Meat', (
-                value,
-              ) {
-                setState(() {
-                  _selectedSellerType = 'Meat';
-                });
-              }),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _buildRadioOption(
-                'Livestock',
-                _selectedSellerType == 'Livestock',
-                (value) {
-                  setState(() {
-                    _selectedSellerType = 'Livestock';
-                  });
-                },
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _buildRadioOption('Both', _selectedSellerType == 'Both', (
-                value,
-              ) {
-                setState(() {
-                  _selectedSellerType = 'Both';
-                });
-              }),
-            ),
+            _buildRadioOption('Meat', _selectedSellerType == 'Meat', (value) {
+              setState(() {
+                _selectedSellerType = 'Meat';
+              });
+            }),
+            _buildRadioOption('Livestock',
+                _selectedSellerType == 'Livestock', (value) {
+              setState(() {
+                _selectedSellerType = 'Livestock';
+              });
+            }),
+            _buildRadioOption('Both', _selectedSellerType == 'Both', (value) {
+              setState(() {
+                _selectedSellerType = 'Both';
+              });
+            }),
           ],
         ),
       ],
@@ -324,53 +321,60 @@ class _SellerRegistrationScreenState extends State<SellerRegistrationScreen> {
   ) {
     return GestureDetector(
       onTap: () => onChanged(true),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? const Color(0xFF059669).withValues(alpha: 0.1)
-              : Colors.grey[50],
-          border: Border.all(
-            color: isSelected ? const Color(0xFF059669) : Colors.grey[300]!,
-            width: 2,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minWidth: 110),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? const Color(0xFF059669).withValues(alpha: 0.1)
+                : Colors.grey[50],
+            border: Border.all(
+              color: isSelected ? const Color(0xFF059669) : Colors.grey[300]!,
+              width: 2,
+            ),
+            borderRadius: BorderRadius.circular(12),
           ),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 20,
-              height: 20,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 20,
+                height: 20,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: isSelected
+                        ? const Color(0xFF059669)
+                        : Colors.grey[400]!,
+                    width: 2,
+                  ),
                   color: isSelected
                       ? const Color(0xFF059669)
-                      : Colors.grey[400]!,
-                  width: 2,
+                      : Colors.transparent,
                 ),
-                color: isSelected
-                    ? const Color(0xFF059669)
-                    : Colors.transparent,
+                child: isSelected
+                    ? const Icon(Icons.check, size: 12, color: Colors.white)
+                    : null,
               ),
-              child: isSelected
-                  ? const Icon(Icons.check, size: 12, color: Colors.white)
-                  : null,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                title,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: isSelected
-                      ? const Color(0xFF059669)
-                      : Colors.grey[700],
+              const SizedBox(width: 12),
+              Flexible(
+                child: Text(
+                  title,
+                  maxLines: 1,
+                  softWrap: false,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: isSelected
+                        ? const Color(0xFF059669)
+                        : Colors.grey[700],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
