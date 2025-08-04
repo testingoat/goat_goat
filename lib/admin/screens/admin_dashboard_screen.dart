@@ -4,6 +4,7 @@ import '../utils/admin_constants.dart';
 import 'admin_login_screen.dart';
 import 'product_reviews_screen.dart';
 import 'notifications_screen.dart';
+import 'delivery_fee_list_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -41,6 +42,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       icon: Icons.analytics,
       title: 'Analytics',
       permission: 'analytics_access',
+    ),
+    AdminMenuItem(
+      icon: Icons.attach_money,
+      title: 'Pricing',
+      permission: 'pricing_management',
     ),
     AdminMenuItem(
       icon: Icons.settings,
@@ -281,6 +287,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       case 4:
         return _buildAnalyticsContent();
       case 5:
+        return _buildPricingContent();
+      case 6:
         return _buildSystemAdminContent();
       default:
         return _buildDashboardContent();
@@ -439,6 +447,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   Widget _buildAnalyticsContent() {
     return const Center(child: Text('Analytics - Coming Soon'));
+  }
+
+  Widget _buildPricingContent() {
+    return const DeliveryFeeListScreen();
   }
 
   Widget _buildSystemAdminContent() {

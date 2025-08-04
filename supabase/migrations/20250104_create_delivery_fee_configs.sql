@@ -65,7 +65,6 @@ CREATE TABLE delivery_fee_configs (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   
   -- Constraints for data integrity
-  CONSTRAINT unique_active_per_scope UNIQUE (scope) WHERE (is_active = true),
   CONSTRAINT valid_tier_rates CHECK (jsonb_typeof(tier_rates) = 'array'),
   CONSTRAINT valid_multipliers CHECK (jsonb_typeof(dynamic_multipliers) = 'object'),
   CONSTRAINT valid_fees CHECK (min_fee >= 0 AND max_fee >= min_fee),
@@ -77,6 +76,9 @@ CREATE TABLE delivery_fee_configs (
 CREATE INDEX idx_delivery_fee_configs_scope ON delivery_fee_configs(scope);
 CREATE INDEX idx_delivery_fee_configs_active ON delivery_fee_configs(is_active) WHERE is_active = true;
 CREATE INDEX idx_delivery_fee_configs_updated ON delivery_fee_configs(updated_at DESC);
+
+-- Create unique index to ensure only one active config per scope
+CREATE UNIQUE INDEX idx_unique_active_scope ON delivery_fee_configs(scope) WHERE is_active = true;
 
 -- Create function to automatically update updated_at and version
 CREATE OR REPLACE FUNCTION update_delivery_fee_configs_updated_at()
@@ -146,18 +148,13 @@ INSERT INTO delivery_fee_configs (
 -- Enable Row Level Security (RLS)
 ALTER TABLE delivery_fee_configs ENABLE ROW LEVEL SECURITY;
 
--- Create RLS policy: Admin users can perform all operations
-CREATE POLICY "Admin full access to delivery fee configs"
+-- Create RLS policy: Service role has full access (for admin operations)
+-- Note: Admin user policies will be added after admin_users table is created
+CREATE POLICY "Service role full access to delivery fee configs"
 ON delivery_fee_configs
 FOR ALL
-TO authenticated
-USING (
-  EXISTS (
-    SELECT 1 FROM user_roles 
-    WHERE user_id = auth.uid() 
-    AND role = 'admin'
-  )
-);
+TO service_role
+USING (true);
 
 -- Create RLS policy: Regular users can only read active configs (for the service)
 CREATE POLICY "Users can read active delivery fee configs"
@@ -166,12 +163,7 @@ FOR SELECT
 TO authenticated
 USING (is_active = true);
 
--- Create RLS policy: Service role has full access (for admin service operations)
-CREATE POLICY "Service role full access"
-ON delivery_fee_configs
-FOR ALL
-TO service_role
-USING (true);
+
 
 -- Grant appropriate permissions
 GRANT SELECT ON delivery_fee_configs TO authenticated;
