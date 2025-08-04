@@ -11,6 +11,24 @@
 /// This allows for safe rollout and instant rollback if needed
 const bool kEnableCatalogMap = true;
 
+// ===== PHASE C FEATURE FLAGS =====
+
+/// Phase C.1: Places API Autocomplete
+/// Enable address search functionality in location selector
+const bool kEnablePlacesAutocomplete = true;
+
+/// Phase C.2: Multiple Delivery Addresses
+/// Enable saving and managing multiple delivery locations
+const bool kEnableMultipleAddresses = false; // Start disabled for safe rollout
+
+/// Phase C.3: Delivery Zone Validation
+/// Enable checking if selected location is in delivery area
+const bool kEnableDeliveryZones = false;
+
+/// Phase C.4: Distance-based Delivery Fees
+/// Enable calculating delivery fees based on distance
+const bool kEnableDeliveryFees = false;
+
 /// Default location coordinates (Bangalore, India)
 /// Used as fallback when user location is not available
 const double kDefaultLatitude = 12.9716;

@@ -31,15 +31,15 @@ class FCMService {
       FlutterLocalNotificationsPlugin();
 
   // Feature flags for gradual rollout
-  // Disable FCM on web and Windows due to compatibility issues
+  // Disable full FCM on web and Windows; web will use no-op stubs
   static bool get _enableFCM {
-    if (kIsWeb) return false;
+    if (kIsWeb) return false; // web: build-safe no-op via stubs
     if (defaultTargetPlatform == TargetPlatform.windows) return false;
     return true;
   }
 
   static bool get _enableLocalNotifications {
-    if (kIsWeb) return false;
+    if (kIsWeb) return false; // web: local notifications not used
     if (defaultTargetPlatform == TargetPlatform.windows) return false;
     return true;
   }
@@ -78,6 +78,15 @@ class FCMService {
       if (kDebugMode) {
         print('🔔 FCM Service: Feature disabled on Windows platform');
       }
+      return false;
+    }
+    // On web, do not initialize native messaging; keep stubs active and return false
+    if (kIsWeb) {
+      if (kDebugMode) {
+        print('🔔 FCM Service: Web build detected, using no-op stubs');
+      }
+      _onNotificationTapped = onNotificationTapped; // still keep callback for consistency
+      _isInitialized = false;
       return false;
     }
 
@@ -137,8 +146,8 @@ class FCMService {
 
   /// Request notification permissions
   Future<bool> _requestPermissions() async {
-    // Skip permissions on Windows
-    if (defaultTargetPlatform == TargetPlatform.windows) {
+    // Skip permissions on Windows and Web
+    if (defaultTargetPlatform == TargetPlatform.windows || kIsWeb) {
       return false;
     }
 
@@ -182,8 +191,8 @@ class FCMService {
 
   /// Initialize local notifications for foreground handling
   Future<void> _initializeLocalNotifications() async {
-    // Skip local notifications on Windows
-    if (defaultTargetPlatform == TargetPlatform.windows) {
+    // Skip local notifications on Windows and Web
+    if (defaultTargetPlatform == TargetPlatform.windows || kIsWeb) {
       return;
     }
 
@@ -241,8 +250,8 @@ class FCMService {
 
   /// Get and store FCM token
   Future<void> _getFCMToken() async {
-    // Skip token retrieval on Windows
-    if (defaultTargetPlatform == TargetPlatform.windows) {
+    // Skip token retrieval on Windows and Web
+    if (defaultTargetPlatform == TargetPlatform.windows || kIsWeb) {
       return;
     }
 
@@ -435,6 +444,14 @@ class FCMService {
 
   /// Setup message handlers for different app states
   void _setupMessageHandlers() {
+    // On web, use stubs (no streams) — skip attaching handlers
+    if (kIsWeb) {
+      if (kDebugMode) {
+        print('ℹ️ FCM: Skipping handler wiring on web');
+      }
+      return;
+    }
+
     // Handle foreground messages
     FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
 
@@ -482,6 +499,8 @@ class FCMService {
 
   /// Show local notification for foreground messages
   Future<void> _showLocalNotification(RemoteMessage message) async {
+    // Skip on web (no local notifications supported in this build)
+    if (kIsWeb) return;
     try {
       const AndroidNotificationDetails androidDetails =
           AndroidNotificationDetails(
@@ -521,34 +540,28 @@ class FCMService {
   }
 
   /// Handle local notification tap
-  void _onLocalNotificationTapped(NotificationResponse response) {
+  void _onLocalNotificationTapped(dynamic response) {
+    // On web, NotificationResponse type doesn't exist; accept dynamic safely
+    final payload = (response is Object && !kIsWeb)
+        ? (response as dynamic).payload
+        : null;
     if (kDebugMode) {
-      print('🔔 FCM: Local notification tapped - ${response.payload}');
+      print('🔔 FCM: Local notification tapped - $payload');
     }
 
-    // Parse payload and handle deep linking
-    if (_enableDeepLinking &&
-        _onNotificationTapped != null &&
-        response.payload != null) {
+    if (_enableDeepLinking && _onNotificationTapped != null && payload != null) {
       try {
         Map<String, dynamic> data;
-
-        // Try to parse the payload as JSON first
         try {
           data = Map<String, dynamic>.from(
-            response.payload != null
-                ? jsonDecode(response.payload!)
-                : <String, dynamic>{},
+            payload != null ? jsonDecode(payload) : <String, dynamic>{},
           );
         } catch (_) {
-          // If JSON parsing fails, treat as simple key-value
-          data = <String, dynamic>{'payload': response.payload};
+          data = <String, dynamic>{'payload': payload.toString()};
         }
-
         if (kDebugMode) {
           print('🔗 FCM: Parsed notification data: $data');
         }
-
         _onNotificationTapped!(data);
       } catch (e) {
         if (kDebugMode) {
@@ -619,6 +632,14 @@ class FCMService {
 
   /// Get current notification settings
   Future<NotificationSettings> getNotificationSettings() async {
+    if (kIsWeb) {
+      // On web builds, just request permissions and return the real settings from the stub,
+      // which is build-safe and returns a denied status by default.
+      try {
+        await _firebaseMessaging.requestPermission();
+      } catch (_) {}
+      return await _firebaseMessaging.getNotificationSettings();
+    }
     return await _firebaseMessaging.getNotificationSettings();
   }
 
@@ -734,27 +755,16 @@ class FCMService {
 /// Background message handler (must be top-level function)
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  if (kIsWeb) {
+    // Not supported on web; no-op
+    return;
+  }
   if (kDebugMode) {
     print('🔔 FCM: Background message received - ${message.messageId}');
     print('   Title: ${message.notification?.title}');
     print('   Body: ${message.notification?.body}');
     print('   Data: ${message.data}');
-    print('   Sent Time: ${message.sentTime}');
-    print('   Collapse Key: ${message.collapseKey}');
-    print('   From: ${message.from}');
-    print('   Message Type: ${message.messageType}');
-    print('   TTL: ${message.ttl}');
-  }
-
-  // TODO: Implement background message handling logic
-  // This could include:
-  // - Updating local database with notification data
-  // - Scheduling local notifications for later display
-  // - Processing data payloads for app state updates
-  // - Syncing data with server
-
-  // For now, just log that the message was received
-  if (kDebugMode) {
-    print('✅ FCM: Background message processed successfully');
+    // The following properties may not exist on some platforms; guard if needed
+    try { print('   TTL: ${message.ttl}'); } catch (_) {}
   }
 }

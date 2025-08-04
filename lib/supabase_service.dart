@@ -257,6 +257,28 @@ class SupabaseService {
     return response;
   }
 
+  /// Get customer by ID
+  Future<Map<String, dynamic>> getCustomerById(String customerId) async {
+    try {
+      final response = await _supabase
+          .from('customers')
+          .select()
+          .eq('id', customerId)
+          .maybeSingle();
+
+      if (response != null) {
+        return {'success': true, 'customer': response};
+      } else {
+        return {'success': false, 'message': 'Customer not found'};
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Failed to fetch customer: ${e.toString()}',
+      };
+    }
+  }
+
   /// Add new customer
   Future<Map<String, dynamic>> addCustomer(
     Map<String, dynamic> customerData,

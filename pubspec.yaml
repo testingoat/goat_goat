@@ -64,6 +64,9 @@ dependencies:
   geolocator: ^10.1.0
   geocoding: ^2.1.1
 
+  # Phase C.1: Places API Autocomplete (using HTTP directly)
+  # google_places_flutter: ^2.1.0  # Not needed - using HTTP directly
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
