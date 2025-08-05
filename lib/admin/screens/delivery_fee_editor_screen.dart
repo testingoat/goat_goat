@@ -237,14 +237,19 @@ class _DeliveryFeeEditorScreenState extends State<DeliveryFeeEditorScreen> {
             : null,
         maxServiceableDistanceKm: double.parse(_maxDistanceController.text),
         version: widget.config?.version ?? 1,
-        lastModifiedBy: 'admin_user', // TODO: Get actual admin user ID
+        lastModifiedBy:
+            null, // Will be set by database trigger or left null for new configs
         createdAt: widget.config?.createdAt ?? DateTime.now(),
         updatedAt: DateTime.now(),
       );
 
       if (widget.config != null) {
         // Update existing configuration
-        await _adminService.updateConfig(config, 'admin_user');
+        // TODO: Get actual admin user ID from auth context
+        await _adminService.updateConfig(
+          config,
+          widget.config!.lastModifiedBy ?? 'system',
+        );
         _showSuccessMessage('Configuration updated successfully');
       } else {
         // Create new configuration

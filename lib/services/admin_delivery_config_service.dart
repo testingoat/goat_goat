@@ -246,7 +246,12 @@ class AdminDeliveryConfigService {
       }
 
       final configData = config.toJson();
-      configData['last_modified_by'] = adminUserId;
+      // Only set last_modified_by if adminUserId looks like a valid UUID
+      if (adminUserId.length == 36 && adminUserId.contains('-')) {
+        configData['last_modified_by'] = adminUserId;
+      } else {
+        configData.remove('last_modified_by'); // Let database handle it
+      }
       configData.remove('created_at'); // Don't update creation timestamp
 
       // Optimistic locking: update only if version matches
