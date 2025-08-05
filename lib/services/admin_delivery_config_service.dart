@@ -17,6 +17,120 @@ class AdminDeliveryConfigService {
 
   SupabaseClient get _supabase => Supabase.instance.client;
 
+  /// Test Supabase connection and permissions
+  /// This method helps diagnose connection and RLS policy issues
+  Future<Map<String, dynamic>> testConnection() async {
+    final results = <String, dynamic>{
+      'timestamp': DateTime.now().toIso8601String(),
+      'tests': <String, dynamic>{},
+    };
+
+    try {
+      // Test 1: Basic connection
+      if (kDebugMode) {
+        print('🔍 Testing Supabase connection...');
+      }
+
+      final client = _supabase;
+      results['tests']['client_available'] = true;
+      results['tests']['supabase_url'] =
+          'https://oaynfzqjielnsipttzbs.supabase.co';
+
+      // Test 2: Read access to delivery_fee_configs
+      try {
+        final readResponse = await client
+            .from('delivery_fee_configs')
+            .select('id, scope, config_name')
+            .limit(1);
+
+        results['tests']['read_access'] = true;
+        results['tests']['existing_configs_count'] = readResponse.length;
+        if (kDebugMode) {
+          print(
+            '✅ Read access successful: ${readResponse.length} configs found',
+          );
+        }
+      } catch (e) {
+        results['tests']['read_access'] = false;
+        results['tests']['read_error'] = e.toString();
+        if (kDebugMode) {
+          print('❌ Read access failed: $e');
+        }
+      }
+
+      // Test 3: Write access (insert test)
+      try {
+        final testConfig = {
+          'scope': 'TEST_CONNECTION',
+          'config_name':
+              'Connection Test ${DateTime.now().millisecondsSinceEpoch}',
+          'is_active': false,
+          'use_routing': true,
+          'tier_rates': [
+            {'min_distance': 0, 'max_distance': 5, 'fee': 10},
+          ],
+          'min_fee': 10,
+          'max_fee': 50,
+          'free_delivery_threshold': 500,
+          'max_delivery_distance': 15,
+          'distance_calibration_factor': 1.0,
+          'dynamic_multipliers': {},
+          'last_modified_by': 'connection_test',
+          'version': 1,
+        };
+
+        final insertResponse = await client
+            .from('delivery_fee_configs')
+            .insert(testConfig)
+            .select()
+            .single();
+
+        results['tests']['write_access'] = true;
+        results['tests']['test_config_id'] = insertResponse['id'];
+
+        if (kDebugMode) {
+          print(
+            '✅ Write access successful: Created test config ${insertResponse['id']}',
+          );
+        }
+
+        // Clean up test config
+        try {
+          await client
+              .from('delivery_fee_configs')
+              .delete()
+              .eq('id', insertResponse['id']);
+          results['tests']['cleanup_successful'] = true;
+          if (kDebugMode) {
+            print('🧹 Test config cleaned up successfully');
+          }
+        } catch (cleanupError) {
+          results['tests']['cleanup_successful'] = false;
+          results['tests']['cleanup_error'] = cleanupError.toString();
+          if (kDebugMode) {
+            print('⚠️ Test config cleanup failed: $cleanupError');
+          }
+        }
+      } catch (e) {
+        results['tests']['write_access'] = false;
+        results['tests']['write_error'] = e.toString();
+        if (kDebugMode) {
+          print('❌ Write access failed: $e');
+        }
+      }
+
+      results['overall_status'] = 'completed';
+    } catch (e) {
+      results['overall_status'] = 'failed';
+      results['error'] = e.toString();
+      if (kDebugMode) {
+        print('❌ Connection test failed: $e');
+      }
+    }
+
+    return results;
+  }
+
   /// Get all delivery fee configurations with optional filtering
   ///
   /// Returns list of configurations sorted by updated_at (newest first)

@@ -287,6 +287,81 @@ class _DeliveryFeeEditorScreenState extends State<DeliveryFeeEditorScreen> {
     );
   }
 
+  /// Test Supabase connection and permissions
+  Future<void> _testConnection() async {
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Testing Supabase connection...'),
+          backgroundColor: Colors.blue,
+        ),
+      );
+
+      final results = await _adminService.testConnection();
+
+      // Show detailed results in a dialog
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Connection Test Results'),
+            content: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('Status: ${results['overall_status']}'),
+                  const SizedBox(height: 8),
+                  Text('Timestamp: ${results['timestamp']}'),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Test Results:',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  ...results['tests'].entries.map<Widget>((entry) {
+                    final key = entry.key;
+                    final value = entry.value;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Text('$key: $value'),
+                    );
+                  }).toList(),
+                  if (results['error'] != null) ...[
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Error:',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.red,
+                      ),
+                    ),
+                    Text(results['error'].toString()),
+                  ],
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Close'),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Connection test failed: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!kEnableAdminDeliveryRates) {
@@ -304,6 +379,12 @@ class _DeliveryFeeEditorScreenState extends State<DeliveryFeeEditorScreen> {
           widget.config != null ? 'Edit Configuration' : 'Create Configuration',
         ),
         actions: [
+          // Test Connection Button (for debugging)
+          IconButton(
+            icon: const Icon(Icons.network_check),
+            tooltip: 'Test Supabase Connection',
+            onPressed: _testConnection,
+          ),
           if (_isSaving)
             const Padding(
               padding: EdgeInsets.all(16),

@@ -98,17 +98,27 @@ class _AdminAppWrapperState extends State<AdminAppWrapper> {
         print('🌐 Supabase URL: ${AdminConstants.supabaseUrl}');
       }
 
-      // Initialize Supabase
+      // Initialize Supabase using the same method as mobile app
       if (!_supabaseInitialized) {
-        await Supabase.initialize(
-          url: AdminConstants.supabaseUrl,
-          anonKey: AdminConstants.supabaseAnonKey,
-          debug: kDebugMode,
-        );
-        _supabaseInitialized = true;
+        try {
+          await Supabase.initialize(
+            url: AdminConstants.supabaseUrl,
+            anonKey: AdminConstants.supabaseAnonKey,
+            debug: kDebugMode,
+          );
+          _supabaseInitialized = true;
 
-        if (kDebugMode) {
-          print('✅ Supabase initialized successfully');
+          if (kDebugMode) {
+            print('✅ Supabase initialized successfully for admin panel');
+            print(
+              '🔑 Using anon key: ${AdminConstants.supabaseAnonKey.substring(0, 20)}...',
+            );
+          }
+        } catch (e) {
+          if (kDebugMode) {
+            print('❌ Supabase initialization failed: $e');
+          }
+          rethrow;
         }
       }
 
