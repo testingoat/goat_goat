@@ -189,8 +189,8 @@ class AdminDeliveryConfigService {
         print('➕ Creating delivery fee config: ${config.scope}');
       }
 
-      // Validate configuration
-      if (!config.isValid) {
+      // Validate configuration for new config (ID not required)
+      if (!_validateNewConfig(config)) {
         throw ArgumentError('Invalid delivery fee configuration');
       }
 
@@ -407,6 +407,85 @@ class AdminDeliveryConfigService {
       print('📚 Config history requested for: $configId (not implemented yet)');
     }
     return [];
+  }
+
+  /// Validate configuration data for new configurations (ID not required)
+  bool _validateNewConfig(DeliveryFeeConfig config) {
+    try {
+      if (kDebugMode) {
+        print('🔍 DEBUG: Validating new config - scope: ${config.scope}');
+      }
+
+      // Basic validation (excluding ID check for new configs)
+      if (config.scope.isEmpty ||
+          config.tierRates.isEmpty ||
+          config.minFee < 0 ||
+          config.maxFee < config.minFee ||
+          config.maxServiceableDistanceKm <= 0 ||
+          config.calibrationMultiplier <= 0) {
+        if (kDebugMode) {
+          print('🔍 DEBUG: Basic validation failed');
+          print('  - scope: ${config.scope}');
+          print('  - tierRates.length: ${config.tierRates.length}');
+          print('  - minFee: ${config.minFee}');
+          print('  - maxFee: ${config.maxFee}');
+          print(
+            '  - maxServiceableDistanceKm: ${config.maxServiceableDistanceKm}',
+          );
+          print('  - calibrationMultiplier: ${config.calibrationMultiplier}');
+        }
+        return false;
+      }
+
+      // Check tier continuity and non-overlap
+      final sortedTiers = List<DeliveryFeeTier>.from(config.tierRates)
+        ..sort((a, b) => a.minKm.compareTo(b.minKm));
+
+      for (int i = 0; i < sortedTiers.length; i++) {
+        final tier = sortedTiers[i];
+
+        // Check tier validity
+        if (tier.maxKm != null && tier.minKm >= tier.maxKm!) {
+          if (kDebugMode) {
+            print(
+              '🔍 DEBUG: Invalid tier range: ${tier.minKm}km - ${tier.maxKm}km',
+            );
+          }
+          return false; // Invalid range
+        }
+
+        // Check continuity (except for last tier)
+        if (i < sortedTiers.length - 1) {
+          final nextTier = sortedTiers[i + 1];
+          if (tier.maxKm == null) {
+            if (kDebugMode) {
+              print(
+                '🔍 DEBUG: Unlimited tier found at position $i (should be last)',
+              );
+            }
+            return false; // Only last tier can be unlimited
+          }
+          if (tier.maxKm != nextTier.minKm) {
+            if (kDebugMode) {
+              print(
+                '🔍 DEBUG: Gap/overlap in tiers: ${tier.maxKm}km ≠ ${nextTier.minKm}km',
+              );
+            }
+            return false; // Gap or overlap in tiers
+          }
+        }
+      }
+
+      if (kDebugMode) {
+        print('🔍 DEBUG: New config validation passed');
+      }
+      return true;
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error validating new config: $e');
+      }
+      return false;
+    }
   }
 
   /// Validate configuration data
