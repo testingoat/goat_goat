@@ -3,7 +3,6 @@ import '../services/admin_auth_service.dart';
 import '../utils/admin_constants.dart';
 import 'admin_login_screen.dart';
 import 'product_reviews_screen.dart';
-import 'notifications_screen.dart';
 import 'delivery_fee_list_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
@@ -438,7 +437,24 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
   Widget _buildNotificationsContent() {
-    return const NotificationsScreen();
+    return const Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.notifications, size: 64, color: Colors.grey),
+          SizedBox(height: 16),
+          Text(
+            'Notifications Management',
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          ),
+          SizedBox(height: 8),
+          Text(
+            'Coming Soon - Temporarily disabled for web deployment',
+            style: TextStyle(color: Colors.grey),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildUserManagementContent() {

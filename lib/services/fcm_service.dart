@@ -3,11 +3,13 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-// Conditional imports for different platforms
+// Only import Firebase packages on mobile platforms
 import 'package:firebase_messaging/firebase_messaging.dart'
-    if (dart.library.html) 'fcm_web_stub.dart';
+    if (dart.library.html) 'fcm_web_stub.dart'
+    as firebase_messaging;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart'
-    if (dart.library.html) 'fcm_web_stub.dart';
+    if (dart.library.html) 'fcm_web_stub.dart'
+    as local_notifications;
 
 /// Firebase Cloud Messaging Service for Goat Goat
 ///
@@ -24,11 +26,12 @@ class FCMService {
   FCMService._internal();
 
   // Firebase Messaging instance
-  final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
+  final firebase_messaging.FirebaseMessaging _firebaseMessaging =
+      firebase_messaging.FirebaseMessaging.instance;
 
   // Local notifications plugin
-  final FlutterLocalNotificationsPlugin _localNotifications =
-      FlutterLocalNotificationsPlugin();
+  final local_notifications.FlutterLocalNotificationsPlugin
+  _localNotifications = local_notifications.FlutterLocalNotificationsPlugin();
 
   // Feature flags for gradual rollout
   // Disable full FCM on web and Windows; web will use no-op stubs
@@ -85,7 +88,8 @@ class FCMService {
       if (kDebugMode) {
         print('🔔 FCM Service: Web build detected, using no-op stubs');
       }
-      _onNotificationTapped = onNotificationTapped; // still keep callback for consistency
+      _onNotificationTapped =
+          onNotificationTapped; // still keep callback for consistency
       _isInitialized = false;
       return false;
     }
@@ -549,7 +553,9 @@ class FCMService {
       print('🔔 FCM: Local notification tapped - $payload');
     }
 
-    if (_enableDeepLinking && _onNotificationTapped != null && payload != null) {
+    if (_enableDeepLinking &&
+        _onNotificationTapped != null &&
+        payload != null) {
       try {
         Map<String, dynamic> data;
         try {
@@ -765,6 +771,8 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     print('   Body: ${message.notification?.body}');
     print('   Data: ${message.data}');
     // The following properties may not exist on some platforms; guard if needed
-    try { print('   TTL: ${message.ttl}'); } catch (_) {}
+    try {
+      print('   TTL: ${message.ttl}');
+    } catch (_) {}
   }
 }
