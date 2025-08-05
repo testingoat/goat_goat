@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/delivery_fee_config.dart';
-import '../supabase_service.dart';
 import '../config/maps_config.dart';
 
 /// AdminDeliveryConfigService - CRUD operations for delivery fee configurations
@@ -15,7 +15,7 @@ class AdminDeliveryConfigService {
   factory AdminDeliveryConfigService() => _instance;
   AdminDeliveryConfigService._internal();
 
-  final SupabaseService _supabaseService = SupabaseService();
+  SupabaseClient get _supabase => Supabase.instance.client;
 
   /// Get all delivery fee configurations with optional filtering
   ///
@@ -32,9 +32,7 @@ class AdminDeliveryConfigService {
         );
       }
 
-      var query = _supabaseService.client
-          .from('delivery_fee_configs')
-          .select('*');
+      var query = _supabase.from('delivery_fee_configs').select('*');
 
       // Apply filters
       if (scope != null) {
@@ -78,7 +76,7 @@ class AdminDeliveryConfigService {
         print('📋 Fetching delivery fee config by ID: $configId');
       }
 
-      final response = await _supabaseService.client
+      final response = await _supabase
           .from('delivery_fee_configs')
           .select('*')
           .eq('id', configId)
@@ -116,7 +114,7 @@ class AdminDeliveryConfigService {
       }
 
       // Try exact scope match first
-      var response = await _supabaseService.client
+      var response = await _supabase
           .from('delivery_fee_configs')
           .select('*')
           .eq('scope', scope)
@@ -137,7 +135,7 @@ class AdminDeliveryConfigService {
         if (parts.length > 1) {
           final cityScope = 'CITY:${parts[0].substring(5)}'; // Remove 'ZONE:'
 
-          response = await _supabaseService.client
+          response = await _supabase
               .from('delivery_fee_configs')
               .select('*')
               .eq('scope', cityScope)
@@ -156,7 +154,7 @@ class AdminDeliveryConfigService {
 
       // If scope is CITY:XXX, try GLOBAL
       if (scope.startsWith('CITY:') || scope.startsWith('ZONE:')) {
-        response = await _supabaseService.client
+        response = await _supabase
             .from('delivery_fee_configs')
             .select('*')
             .eq('scope', 'GLOBAL')
@@ -209,7 +207,7 @@ class AdminDeliveryConfigService {
       configData.remove('created_at'); // Let database set timestamp
       configData.remove('updated_at'); // Let database set timestamp
 
-      final response = await _supabaseService.client
+      final response = await _supabase
           .from('delivery_fee_configs')
           .insert(configData)
           .select()
@@ -252,7 +250,7 @@ class AdminDeliveryConfigService {
       configData.remove('created_at'); // Don't update creation timestamp
 
       // Optimistic locking: update only if version matches
-      final response = await _supabaseService.client
+      final response = await _supabase
           .from('delivery_fee_configs')
           .update(configData)
           .eq('id', config.id)
@@ -345,7 +343,7 @@ class AdminDeliveryConfigService {
         throw StateError('Cannot delete active GLOBAL configuration');
       }
 
-      await _supabaseService.client
+      await _supabase
           .from('delivery_fee_configs')
           .delete()
           .eq('id', configId)
