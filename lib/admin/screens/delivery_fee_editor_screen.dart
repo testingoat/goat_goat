@@ -145,6 +145,7 @@ class _DeliveryFeeEditorScreenState extends State<DeliveryFeeEditorScreen> {
   /// Validate form data
   bool _validateForm() {
     if (!_formKey.currentState!.validate()) {
+      print('🔍 DEBUG: Form validation failed');
       return false;
     }
 
@@ -154,33 +155,57 @@ class _DeliveryFeeEditorScreenState extends State<DeliveryFeeEditorScreen> {
       return false;
     }
 
+    print('🔍 DEBUG: Validating ${_tierRates.length} tier rates');
+    for (int i = 0; i < _tierRates.length; i++) {
+      final tier = _tierRates[i];
+      print(
+        '🔍 DEBUG: Tier $i: ${tier.minKm}km - ${tier.maxKm}km (fee: ${tier.fee}, base: ${tier.baseFee}, perKm: ${tier.perKmFee})',
+      );
+    }
+
     // Validate tier continuity
     final sortedTiers = List<DeliveryFeeTier>.from(_tierRates)
       ..sort((a, b) => a.minKm.compareTo(b.minKm));
+
+    print('🔍 DEBUG: Sorted tiers:');
+    for (int i = 0; i < sortedTiers.length; i++) {
+      final tier = sortedTiers[i];
+      print('🔍 DEBUG: Sorted Tier $i: ${tier.minKm}km - ${tier.maxKm}km');
+    }
 
     for (int i = 0; i < sortedTiers.length; i++) {
       final tier = sortedTiers[i];
 
       // Check tier validity
       if (tier.maxKm != null && tier.minKm >= tier.maxKm!) {
-        _showErrorMessage(
-          'Invalid tier range: ${tier.minKm}km - ${tier.maxKm}km',
-        );
+        final errorMsg =
+            'Invalid tier range: ${tier.minKm}km - ${tier.maxKm}km';
+        print('🔍 DEBUG: $errorMsg');
+        _showErrorMessage(errorMsg);
         return false;
       }
 
       // Check continuity (except for last tier)
       if (i < sortedTiers.length - 1) {
         final nextTier = sortedTiers[i + 1];
-        if (tier.maxKm == null || tier.maxKm != nextTier.minKm) {
-          _showErrorMessage(
-            'Tier ranges must be continuous without gaps or overlaps',
-          );
+        if (tier.maxKm == null) {
+          final errorMsg =
+              'Only the last tier can have unlimited range (found at position $i)';
+          print('🔍 DEBUG: $errorMsg');
+          _showErrorMessage(errorMsg);
+          return false;
+        }
+        if (tier.maxKm != nextTier.minKm) {
+          final errorMsg =
+              'Tier ranges must be continuous: ${tier.maxKm}km ≠ ${nextTier.minKm}km';
+          print('🔍 DEBUG: $errorMsg');
+          _showErrorMessage(errorMsg);
           return false;
         }
       }
     }
 
+    print('🔍 DEBUG: All tier validations passed');
     return true;
   }
 
