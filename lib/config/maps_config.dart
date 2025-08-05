@@ -31,7 +31,8 @@ const bool kEnableDeliveryFees = false;
 
 /// Phase C.4: Admin Delivery Rate Management
 /// Enable admin panel delivery fee configuration (Phase 1-5)
-const bool kEnableAdminDeliveryRates = false; // Start disabled for safe rollout
+const bool kEnableAdminDeliveryRates =
+    true; // ✅ ENABLED - Phase 2 Admin UI ready!
 
 /// Phase C.4: Real-time Rate Updates
 /// Enable real-time config updates from admin panel (Phase 4+)
