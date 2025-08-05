@@ -39,28 +39,15 @@ class AdminConstants {
 
   // Supabase Configuration
   static String get supabaseUrl {
-    if (isProduction) {
-      return const String.fromEnvironment(
-        'SUPABASE_URL',
-        defaultValue: 'https://oaynfzqjielnsipttzbs.supabase.co',
-      );
-    } else {
-      // Local development - use same Supabase instance
-      return 'https://oaynfzqjielnsipttzbs.supabase.co';
-    }
+    // Always use the hardcoded Supabase URL for admin panel
+    // Environment variables are not available in web deployments
+    return 'https://oaynfzqjielnsipttzbs.supabase.co';
   }
 
   static String get supabaseAnonKey {
-    if (isProduction) {
-      return const String.fromEnvironment(
-        'SUPABASE_ANON_KEY',
-        defaultValue:
-            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9heW5menFqaWVsbnNpcHR0emJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk5MDU3NDUsImV4cCI6MjA2NTQ4MTc0NX0.RnhpZ7ri3Nf3vmDMCmLqYnB8cRNZc_u-3dhCutpUWEA',
-      );
-    } else {
-      // Local development - use same key
-      return 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9heW5menFqaWVsbnNpcHR0emJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk5MDU3NDUsImV4cCI6MjA2NTQ4MTc0NX0.RnhpZ7ri3Nf3vmDMCmLqYnB8cRNZc_u-3dhCutpUWEA';
-    }
+    // Always use the hardcoded anon key for admin panel
+    // Environment variables are not available in web deployments
+    return 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9heW5menFqaWVsbnNpcHR0emJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk5MDU3NDUsImV4cCI6MjA2NTQ4MTc0NX0.RnhpZ7ri3Nf3vmDMCmLqYnB8cRNZc_u-3dhCutpUWEA';
   }
 
   // Admin Panel Configuration
