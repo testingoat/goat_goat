@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import '../services/location_service.dart';
+import '../services/places_service.dart';
+import '../services/delivery_address_state.dart';
+import '../widgets/address_picker.dart';
 
 /// LocationSelectorScreen - Full-screen location picker
 ///
@@ -30,6 +33,7 @@ class LocationSelectorScreen extends StatefulWidget {
 
 class _LocationSelectorScreenState extends State<LocationSelectorScreen> {
   final LocationService _locationService = LocationService();
+  final PlacesService _placesService = PlacesService();
   GoogleMapController? _mapController;
 
   late LatLng _selectedLocation;
@@ -90,6 +94,56 @@ class _LocationSelectorScreenState extends State<LocationSelectorScreen> {
       _selectedLocation = location;
     });
     _loadAddressForLocation(location);
+  }
+
+  /// Handle address change from AddressPicker (autocomplete/manual entry)
+  void _onAddressChangedFromPicker(
+    String address,
+    Map<String, dynamic>? locationData,
+  ) {
+    setState(() {
+      _selectedAddress = address;
+    });
+
+    // If location data is available, update map position
+    if (locationData != null) {
+      final lat = locationData['latitude'] as double?;
+      final lng = locationData['longitude'] as double?;
+
+      if (lat != null && lng != null) {
+        final newLocation = LatLng(lat, lng);
+        setState(() {
+          _selectedLocation = newLocation;
+        });
+
+        // Move map to the new location
+        _mapController?.animateCamera(CameraUpdate.newLatLng(newLocation));
+
+        print(
+          '📍 LOCATION_SELECTOR - Address picker updated map to: $lat, $lng',
+        );
+      }
+    } else {
+      // If no location data, try to geocode the address
+      _geocodeAddressAndUpdateMap(address);
+    }
+  }
+
+  /// Geocode address and update map position
+  Future<void> _geocodeAddressAndUpdateMap(String address) async {
+    if (address.trim().isEmpty) return;
+
+    try {
+      // For now, we'll skip geocoding if no location data is provided
+      // The AddressPicker will handle Places API autocomplete which includes coordinates
+      // This method is mainly for manual text entry without coordinates
+      print('📍 LOCATION_SELECTOR - Manual address entered: $address');
+      print(
+        '📍 LOCATION_SELECTOR - Keeping current map position, user can adjust manually',
+      );
+    } catch (e) {
+      print('❌ LOCATION_SELECTOR - Address processing error: $e');
+    }
   }
 
   /// Move to current location
@@ -282,52 +336,40 @@ class _LocationSelectorScreenState extends State<LocationSelectorScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                const Icon(
-                  Icons.location_on,
-                  color: Color(0xFF059669),
-                  size: 20,
-                ),
-                const SizedBox(width: 8),
-                const Text(
-                  'Delivery Address',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF374151),
-                  ),
-                ),
-              ],
+            // Editable address picker with autocomplete and map sync
+            AddressPicker(
+              customerId: widget.customerId,
+              initialAddress: _selectedAddress,
+              hintText: 'Search or enter your delivery address',
+              showMapButton:
+                  false, // Hide map button since we're already in map screen
+              onAddressChanged: (address, locationData) {
+                _onAddressChangedFromPicker(address, locationData);
+              },
             ),
-            const SizedBox(height: 8),
+
+            // Loading indicator for reverse geocoding
             if (_isLoadingAddress)
-              const Row(
-                children: [
-                  SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        Color(0xFF059669),
+              const Padding(
+                padding: EdgeInsets.only(top: 8),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          Color(0xFF059669),
+                        ),
                       ),
                     ),
-                  ),
-                  SizedBox(width: 8),
-                  Text(
-                    'Loading address...',
-                    style: TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
-                  ),
-                ],
-              )
-            else
-              Text(
-                _selectedAddress ?? 'Unknown location',
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: Color(0xFF6B7280),
-                  height: 1.4,
+                    SizedBox(width: 8),
+                    Text(
+                      'Loading address from map...',
+                      style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+                    ),
+                  ],
                 ),
               ),
           ],

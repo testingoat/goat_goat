@@ -34,6 +34,22 @@ const bool kEnableDeliveryFees = false;
 const bool kEnableAdminDeliveryRates =
     true; // ✅ ENABLED - Phase 2 Admin UI ready!
 
+// ===== PHASE 3A.3 FEATURE FLAGS =====
+
+/// Phase 3A.3: Delivery Address Pill in Header
+/// Enable compact delivery address display in app header
+const bool kShowDeliveryAddressPill = true;
+
+/// Phase 3A.3: Simplified Address Input (UI Fix)
+/// Enable single smart input field instead of dual input fields
+/// Removes "Or enter manually" secondary text field to eliminate UI duplication
+const bool kUseSimplifiedAddressInput = true;
+
+/// Phase 3A.3: Hide Home Map Section (UI Fix)
+/// Hide redundant DeliveryLocationSection from home screen
+/// Keeps only the address pill to eliminate duplicate address entry points
+const bool kHideHomeMapSection = true;
+
 /// Phase C.4: Real-time Rate Updates
 /// Enable real-time config updates from admin panel (Phase 4+)
 const bool kEnableRealtimeRateUpdates = false;
@@ -64,6 +80,11 @@ const double kLocationAccuracyMeters = 100.0;
 /// Note: API keys should be configured in platform-specific files
 /// Android: android/app/src/main/AndroidManifest.xml
 /// iOS: ios/Runner/AppDelegate.swift and Info.plist
+
+/// Google Maps API Key for HTTP requests (Distance Matrix, Geocoding, Places)
+/// This is used for server-side API calls from the Flutter app
+const String kGoogleMapsApiKey = 'AIzaSyDOBBimUu_eGMwsXZUqrNFk3puT5rMWbig';
+
 class MapsConfig {
   static const String androidApiKeyMetaName = 'com.google.android.geo.API_KEY';
   static const String iosApiKeyName = 'GOOGLE_MAPS_API_KEY';

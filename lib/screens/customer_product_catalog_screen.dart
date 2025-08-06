@@ -3,15 +3,22 @@ import '../supabase_service.dart';
 import '../services/shopping_cart_service.dart';
 import '../services/customer_notification_service.dart';
 import '../services/auth_service.dart';
+import '../services/delivery_address_state.dart';
 import '../config/feature_flags.dart';
 import '../config/maps_config.dart';
 import '../widgets/product_review_widget.dart';
 import '../widgets/delivery_location_section.dart';
+import '../widgets/section_header.dart';
+import '../widgets/category_shortcut_row.dart';
+import '../widgets/address_picker.dart';
+import '../config/ui_flags.dart';
 import 'customer_order_history_screen.dart';
 import 'customer_shopping_cart_screen.dart';
 import 'customer_notifications_screen.dart';
 import 'customer_product_reviews_screen.dart';
 import 'customer_product_details_screen.dart';
+// Diagnostics wiring for delivery fee
+import '../services/delivery_fee_service.dart';
 
 class CustomerProductCatalogScreen extends StatefulWidget {
   final Map<String, dynamic> customer;
@@ -32,6 +39,13 @@ class _CustomerProductCatalogScreenState
   final AuthService _authService = AuthService();
   final _searchController = TextEditingController();
 
+  // --- Delivery fee diagnostics state (non-invasive) ---
+  final DeliveryFeeService _deliveryFeeService = DeliveryFeeService();
+  double? _lastDeliveryFee;
+  double? _lastDistanceKm;
+  String? _lastFeeReason;
+  String? _lastFeeTier;
+
   List<Map<String, dynamic>> _products = [];
   bool _isLoading = true;
   String _searchQuery = '';
@@ -41,9 +55,23 @@ class _CustomerProductCatalogScreenState
   @override
   void initState() {
     super.initState();
+    _initializeAddressState();
     _loadProducts();
     _updateCartCount();
     _updateNotificationCount();
+  }
+
+  /// Initialize shared address state from customer data
+  void _initializeAddressState() {
+    try {
+      // Initialize shared address state for this customer
+      DeliveryAddressState.initializeFromCustomer(widget.customer);
+      print(
+        '📍 CATALOG - Address state initialized for customer: ${widget.customer['id']}',
+      );
+    } catch (e) {
+      print('❌ CATALOG - Address state initialization error: $e');
+    }
   }
 
   @override
@@ -58,7 +86,6 @@ class _CustomerProductCatalogScreenState
     });
 
     try {
-      // Load only approved and active products for customers
       final products = await _supabaseService.getMeatProducts(
         approvalStatus: 'approved',
         isActive: true,
@@ -104,22 +131,49 @@ class _CustomerProductCatalogScreenState
           child: Column(
             children: [
               _buildAppBar(),
+
+              // Phase 3A.3: Delivery Address Pill (feature flagged)
+              if (kShowDeliveryAddressPill)
+                AddressPicker(
+                  isPillMode: true,
+                  customerId: widget.customer['id'] as String,
+                  initialAddress: widget.customer['address'] as String?,
+                  onAddressChanged: (address, locationData) async {
+                    // Wire to delivery fee calculation
+                    final subtotal = await _safeGetCartSubtotal();
+                    print('🧩 CATALOG-FEE: AddressPicker change → addr="$address", subtotal=₹${subtotal.toStringAsFixed(0)}');
+                    await _calculateAndShowDeliveryFee(address, subtotal);
+                  },
+                ),
+
               _buildSearchBar(),
+
+              // Category shortcuts just under search (feature-flagged via UiFlags)
+              if (UiFlags.categoryShortcutsEnabled) ...[
+                const SectionHeader(title: 'Popular categories'),
+                CategoryShortcutRow(
+                  categories: _defaultCategories,
+                  onTap: (cat) {
+                    // Apply as a quick search and reload results
+                    _searchController.text = cat.query ?? cat.label;
+                    setState(() {
+                      _searchQuery = _searchController.text;
+                    });
+                    _loadProducts();
+                  },
+                ),
+              ],
+
               // Google Maps delivery location section (feature flagged)
-              if (kEnableCatalogMap)
+              // UI Fix: Hide redundant map section when kHideHomeMapSection is true
+              if (kEnableCatalogMap && !kHideHomeMapSection)
                 DeliveryLocationSection(
                   customerId: widget.customer['id'],
-                  onLocationSelected: (locationData) {
-                    // Handle location selection if needed
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          'Delivery location updated: ${locationData['address']}',
-                        ),
-                        backgroundColor: const Color(0xFF059669),
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
+                  onLocationSelected: (locationData) async {
+                    final address = (locationData['address'] as String?) ?? '';
+                    final subtotal = await _safeGetCartSubtotal();
+                    print('🧩 CATALOG-FEE: Map selection → addr="$address", subtotal=₹${subtotal.toStringAsFixed(0)}');
+                    await _calculateAndShowDeliveryFee(address, subtotal);
                   },
                 ),
               Expanded(
@@ -150,7 +204,6 @@ class _CustomerProductCatalogScreenState
             tooltip: 'Back',
           ),
           const SizedBox(width: 6),
-          // Title + subtitle take available space, single-line, ellipsis
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -160,7 +213,7 @@ class _CustomerProductCatalogScreenState
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 18, // slightly reduced to avoid wrap
+                    fontSize: 18,
                     fontWeight: FontWeight.w700,
                     color: Colors.white,
                     letterSpacing: 0.2,
@@ -176,7 +229,6 @@ class _CustomerProductCatalogScreenState
             ),
           ),
           const SizedBox(width: 6),
-          // Trailing actions in a tight row so they don't squeeze title
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -287,9 +339,7 @@ class _CustomerProductCatalogScreenState
                   size: 22,
                 ),
                 onSelected: (value) {
-                  if (value == 'logout') {
-                    _showLogoutDialog();
-                  }
+                  if (value == 'logout') _showLogoutDialog();
                 },
                 itemBuilder: (context) => const [
                   PopupMenuItem(
@@ -365,7 +415,6 @@ class _CustomerProductCatalogScreenState
           setState(() {
             _searchQuery = value;
           });
-          // Debounce search
           Future.delayed(const Duration(milliseconds: 500), () {
             if (_searchQuery == value) {
               _loadProducts();
@@ -412,7 +461,7 @@ class _CustomerProductCatalogScreenState
             const SizedBox(height: 16),
             Text(
               _searchQuery.isNotEmpty
-                  ? 'No products found for "$_searchQuery"'
+                  ? 'No products found for \"$_searchQuery\"'
                   : 'No products available',
               style: const TextStyle(
                 fontSize: 18,
@@ -434,7 +483,7 @@ class _CustomerProductCatalogScreenState
       padding: const EdgeInsets.all(12),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        childAspectRatio: 0.78, // slightly shorter cards for tighter layout
+        childAspectRatio: 0.78,
         crossAxisSpacing: 12,
         mainAxisSpacing: 12,
       ),
@@ -481,7 +530,6 @@ class _CustomerProductCatalogScreenState
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Product Image with Hero animation and enhanced effects
                   Hero(
                     tag: 'product-${product['id']}',
                     child: AnimatedContainer(
@@ -509,15 +557,12 @@ class _CustomerProductCatalogScreenState
                       ),
                     ),
                   ),
-
-                  // Product Details - Fixed height instead of Expanded
                   Container(
                     height: 115,
                     padding: const EdgeInsets.all(8),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Product Name
                         Text(
                           product['name'] ?? 'Product',
                           style: const TextStyle(
@@ -529,8 +574,6 @@ class _CustomerProductCatalogScreenState
                           overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 4),
-
-                        // Price
                         Text(
                           '₹${product['price'] ?? 0}/kg',
                           style: const TextStyle(
@@ -540,8 +583,6 @@ class _CustomerProductCatalogScreenState
                           ),
                         ),
                         const SizedBox(height: 2),
-
-                        // Seller name - More compact
                         if (product['sellers'] != null)
                           Text(
                             'by ${product['sellers']['seller_name']}',
@@ -552,18 +593,12 @@ class _CustomerProductCatalogScreenState
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
-
                         const SizedBox(height: 4),
-
-                        // Product Reviews Summary
                         ProductReviewSummary(
                           productId: product['id'],
                           showFullStats: false,
                         ),
-
                         const Spacer(),
-
-                        // Add to Cart Button - More compact
                         SizedBox(
                           width: double.infinity,
                           height: 28,
@@ -598,7 +633,73 @@ class _CustomerProductCatalogScreenState
     );
   }
 
-  /// Navigate to product reviews screen with Hero animation
+  // --- Delivery fee helpers ---
+
+  Future<double> _safeGetCartSubtotal() async {
+    try {
+      final summary = await _cartService.getCartSummary(widget.customer['id']);
+      final subtotal = (summary['subtotal'] as num?)?.toDouble() ?? 0.0;
+      return subtotal;
+    } catch (e) {
+      print('❌ CATALOG-FEE: Failed to get cart subtotal: $e');
+      return 0.0;
+    }
+  }
+
+  Future<void> _calculateAndShowDeliveryFee(String address, double subtotal) async {
+    if (address.trim().isEmpty) {
+      print('⚠️ CATALOG-FEE: Empty address, skipping fee calc');
+      return;
+    }
+    // Call the DeliveryFeeService
+    final result = await _deliveryFeeService.calculateDeliveryFee(
+      customerAddress: address,
+      orderSubtotal: subtotal,
+      // sellerAddress can be provided per product/seller later; default is BLR
+    );
+
+    if (!(result['success'] as bool)) {
+      print('❌ CATALOG-FEE: Fee calc failed → ${result['error']}');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Delivery fee unavailable: ${result['error']}'),
+            backgroundColor: Colors.orange,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+      return;
+    }
+
+    final fee = (result['fee'] as num).toDouble();
+    final distanceKm = (result['distance_km'] as num?)?.toDouble();
+    final tier = result['tier'] as String?;
+    final reason = result['reason'] as String?;
+
+    print('💰 CATALOG-FEE: success fee=₹${fee.toStringAsFixed(0)} dist=${distanceKm?.toStringAsFixed(2)}km tier=$tier reason=${reason ?? '-'}');
+
+    if (mounted) {
+      setState(() {
+        _lastDeliveryFee = fee;
+        _lastDistanceKm = distanceKm;
+        _lastFeeTier = tier;
+        _lastFeeReason = reason;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(reason == 'free_delivery_threshold'
+              ? 'Free delivery applied (subtotal qualifies)'
+              : 'Estimated delivery fee: ₹${fee.toStringAsFixed(0)}'
+          ),
+          backgroundColor: const Color(0xFF059669),
+          duration: const Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
   void _navigateToProductReviews(Map<String, dynamic> product) {
     Navigator.push(
       context,
@@ -617,7 +718,6 @@ class _CustomerProductCatalogScreenState
             begin: begin,
             end: end,
           ).chain(CurveTween(curve: curve));
-
           return SlideTransition(
             position: animation.drive(tween),
             child: child,
@@ -628,7 +728,6 @@ class _CustomerProductCatalogScreenState
     );
   }
 
-  /// Navigate to product details screen (UI-only, preserves logic)
   void _navigateToProductDetails(Map<String, dynamic> product) {
     Navigator.push(
       context,
@@ -664,7 +763,7 @@ class _CustomerProductCatalogScreenState
       final result = await _cartService.addToCart(
         customerId: widget.customer['id'],
         productId: product['id'],
-        quantity: 1, // Default quantity
+        quantity: 1,
         unitPrice: (product['price'] as num).toDouble(),
       );
 
@@ -677,8 +776,6 @@ class _CustomerProductCatalogScreenState
               duration: const Duration(seconds: 2),
             ),
           );
-
-          // Update cart count
           _updateCartCount();
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -712,12 +809,10 @@ class _CustomerProductCatalogScreenState
         });
       }
     } catch (e) {
-      // Silently handle cart count update errors
-      print('Error updating cart count: $e');
+      // ignore
     }
   }
 
-  /// Update notification count for badge display
   Future<void> _updateNotificationCount() async {
     try {
       final count = await _notificationService.getUnreadNotificationCount(
@@ -729,17 +824,11 @@ class _CustomerProductCatalogScreenState
         });
       }
     } catch (e) {
-      // Silently handle notification count update errors
-      print('Error updating notification count: $e');
+      // ignore
     }
   }
 
-  /// Navigate to Order History screen (Phase 1.1 feature)
-  ///
-  /// This method provides navigation to the new Order History feature
-  /// while maintaining the existing customer portal workflow
   void _navigateToOrderHistory() {
-    // Feature flag check (redundant but safe)
     if (!FeatureFlags.isEnabled('order_history')) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -749,11 +838,7 @@ class _CustomerProductCatalogScreenState
       );
       return;
     }
-
-    // Log feature usage
     FeatureFlags.logFeatureUsage('order_history', 'navigation_from_catalog');
-
-    // Navigate to Order History screen
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -763,15 +848,8 @@ class _CustomerProductCatalogScreenState
     );
   }
 
-  /// Navigate to Shopping Cart screen
-  ///
-  /// This method provides navigation to the shopping cart
-  /// while maintaining the existing customer portal workflow
   void _navigateToShoppingCart() {
-    // Log feature usage
     FeatureFlags.logFeatureUsage('shopping_cart', 'navigation_from_catalog');
-
-    // Navigate to Shopping Cart screen
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -779,20 +857,12 @@ class _CustomerProductCatalogScreenState
             CustomerShoppingCartScreen(customer: widget.customer),
       ),
     ).then((_) {
-      // Refresh cart count when returning from cart screen
       _updateCartCount();
     });
   }
 
-  /// Navigate to Notifications screen
-  ///
-  /// This method provides navigation to the notifications screen
-  /// and refreshes notification count when returning
   void _navigateToNotifications() {
-    // Log feature usage
     FeatureFlags.logFeatureUsage('notifications', 'navigation_from_catalog');
-
-    // Navigate to Notifications screen
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -800,12 +870,10 @@ class _CustomerProductCatalogScreenState
             CustomerNotificationsScreen(customer: widget.customer),
       ),
     ).then((_) {
-      // Refresh notification count when returning from notifications screen
       _updateNotificationCount();
     });
   }
 
-  /// Show logout confirmation dialog
   void _showLogoutDialog() {
     showDialog(
       context: context,
@@ -830,18 +898,13 @@ class _CustomerProductCatalogScreenState
     );
   }
 
-  /// Perform logout and return to main screen
   Future<void> _performLogout() async {
     try {
-      // Clear the session
       await _authService.clearSession();
-
-      // Navigate back to main screen (replace entire navigation stack)
       if (mounted) {
         Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
       }
     } catch (e) {
-      // Handle logout error
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -853,3 +916,33 @@ class _CustomerProductCatalogScreenState
     }
   }
 }
+
+// Single file-level constant for default categories
+const List<CategoryShortcut> _defaultCategories = [
+  CategoryShortcut(
+    id: 'chicken',
+    label: 'Chicken',
+    icon: Icons.set_meal,
+    query: 'chicken',
+  ),
+  CategoryShortcut(
+    id: 'mutton',
+    label: 'Mutton',
+    icon: Icons.lunch_dining,
+    query: 'mutton',
+  ),
+  CategoryShortcut(id: 'fish', label: 'Fish', icon: Icons.water, query: 'fish'),
+  CategoryShortcut(
+    id: 'prawns',
+    label: 'Prawns',
+    icon: Icons.emoji_food_beverage,
+    query: 'prawns',
+  ),
+  CategoryShortcut(id: 'eggs', label: 'Eggs', icon: Icons.egg, query: 'eggs'),
+  CategoryShortcut(
+    id: 'marinades',
+    label: 'Ready to Cook',
+    icon: Icons.kitchen,
+    query: 'marinated',
+  ),
+];

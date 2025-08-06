@@ -4,12 +4,31 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 // Only import Firebase packages on mobile platforms
+// Use conditional imports for web-safe stubs, but also bring top-level symbols into scope
 import 'package:firebase_messaging/firebase_messaging.dart'
     if (dart.library.html) 'fcm_web_stub.dart'
     as firebase_messaging;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart'
     if (dart.library.html) 'fcm_web_stub.dart'
     as local_notifications;
+
+// Also import symbol names for direct usage (guards elsewhere ensure runtime safety)
+// These imports are no-ops on web due to conditional stubs above providing matching APIs.
+import 'package:firebase_messaging/firebase_messaging.dart'
+    show FirebaseMessaging, RemoteMessage, NotificationSettings, AuthorizationStatus;
+import 'package:flutter_local_notifications/flutter_local_notifications.dart'
+    show
+        FlutterLocalNotificationsPlugin,
+        AndroidInitializationSettings,
+        DarwinInitializationSettings,
+        InitializationSettings,
+        AndroidNotificationChannel,
+        AndroidFlutterLocalNotificationsPlugin,
+        AndroidNotificationDetails,
+        DarwinNotificationDetails,
+        NotificationDetails,
+        Importance,
+        Priority;
 
 /// Firebase Cloud Messaging Service for Goat Goat
 ///

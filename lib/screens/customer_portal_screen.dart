@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../supabase_service.dart';
 import '../services/otp_service_fallback.dart';
 import '../services/auth_service.dart';
+import '../services/auto_location_service.dart';
 import 'customer_product_catalog_screen.dart';
 
 class CustomerPortalScreen extends StatefulWidget {
@@ -491,6 +492,9 @@ class _CustomerPortalScreenState extends State<CustomerPortalScreen> {
                 CustomerProductCatalogScreen(customer: customer),
           ),
         );
+
+        // Auto-fetch location after successful login (non-blocking)
+        _autoFetchLocationAfterLogin(customer);
       }
     } catch (e) {
       if (mounted) {
@@ -502,6 +506,38 @@ class _CustomerPortalScreenState extends State<CustomerPortalScreen> {
           SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
         );
       }
+    }
+  }
+
+  /// Auto-fetch location after successful customer login
+  Future<void> _autoFetchLocationAfterLogin(
+    Map<String, dynamic> customer,
+  ) async {
+    try {
+      final customerId = customer['id'] as String;
+
+      // Use a slight delay to ensure navigation is complete
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      if (mounted) {
+        await AutoLocationService.autoFetchLocationOnLogin(
+          context: context,
+          customerId: customerId,
+          onLocationFetched: (address, locationData) {
+            print(
+              '✅ LOGIN - Auto-location fetched: ${address.length > 50 ? '${address.substring(0, 50)}...' : address}',
+            );
+            // Location is automatically stored in shared state by the service
+          },
+          onLocationDenied: () {
+            print('⚠️ LOGIN - Location permission denied by user');
+            // SnackBar message is automatically shown by the service
+          },
+        );
+      }
+    } catch (e) {
+      print('❌ LOGIN - Auto-location error: $e');
+      // Don't show error to user, just continue without auto-location
     }
   }
 }

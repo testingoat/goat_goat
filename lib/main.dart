@@ -4,6 +4,7 @@ import 'dart:ui';
 import 'seller_portal_screen.dart';
 import 'supabase_service.dart';
 import 'services/auth_service.dart';
+import 'services/delivery_fee_setup_service.dart';
 import 'screens/developer_dashboard_screen.dart';
 import 'screens/customer_portal_screen.dart';
 import 'screens/customer_product_catalog_screen.dart';
@@ -97,6 +98,9 @@ class _MyAppState extends State<MyApp> {
       // Initialize FCM Service
       await _initializeFCMService();
 
+      // Initialize Delivery Fee System
+      await _initializeDeliveryFeeSystem();
+
       // Check for existing login session
       await _checkExistingSession();
     } catch (e) {
@@ -124,6 +128,26 @@ class _MyAppState extends State<MyApp> {
       if (kDebugMode) {
         print('❌ FCM Service initialization error: $e');
       }
+    }
+  }
+
+  /// Initialize Delivery Fee System
+  Future<void> _initializeDeliveryFeeSystem() async {
+    try {
+      if (kDebugMode) {
+        print('🚚 Initializing Delivery Fee System...');
+      }
+
+      await DeliveryFeeSetupService.initializeDeliveryFeeSystem();
+
+      if (kDebugMode) {
+        print('✅ Delivery Fee System initialized successfully');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error initializing Delivery Fee System: $e');
+      }
+      // Don't throw error - app should continue even if delivery fee setup fails
     }
   }
 
