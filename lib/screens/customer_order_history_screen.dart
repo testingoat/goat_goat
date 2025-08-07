@@ -15,8 +15,14 @@ import '../config/feature_flags.dart';
 /// - Feature flag protected for gradual rollout
 class CustomerOrderHistoryScreen extends StatefulWidget {
   final Map<String, dynamic> customer;
+  final bool
+  hideBackButton; // Phase 4D: Hide back button when accessed from app shell
 
-  const CustomerOrderHistoryScreen({super.key, required this.customer});
+  const CustomerOrderHistoryScreen({
+    super.key,
+    required this.customer,
+    this.hideBackButton = false,
+  });
 
   @override
   State<CustomerOrderHistoryScreen> createState() =>
@@ -100,10 +106,14 @@ class _CustomerOrderHistoryScreenState
       ),
       backgroundColor: Colors.green[600],
       elevation: 0,
-      leading: IconButton(
-        icon: const Icon(Icons.arrow_back, color: Colors.white),
-        onPressed: () => Navigator.pop(context),
-      ),
+      // Phase 4D: Conditionally hide back button when accessed from app shell
+      leading: widget.hideBackButton
+          ? null
+          : IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.white),
+              onPressed: () => Navigator.pop(context),
+            ),
+      automaticallyImplyLeading: !widget.hideBackButton,
       actions: [
         // Beta indicator if feature is in beta
         if (FeatureFlags.isFeatureBeta('order_history'))

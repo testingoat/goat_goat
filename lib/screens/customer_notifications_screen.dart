@@ -3,8 +3,14 @@ import '../services/customer_notification_service.dart';
 
 class CustomerNotificationsScreen extends StatefulWidget {
   final Map<String, dynamic> customer;
+  final bool
+  hideBackButton; // Phase 4D: Hide back button when accessed from app shell
 
-  const CustomerNotificationsScreen({super.key, required this.customer});
+  const CustomerNotificationsScreen({
+    super.key,
+    required this.customer,
+    this.hideBackButton = false,
+  });
 
   @override
   State<CustomerNotificationsScreen> createState() =>
@@ -86,10 +92,14 @@ class _CustomerNotificationsScreenState
       ),
       backgroundColor: Colors.green[600],
       elevation: 0,
-      leading: IconButton(
-        icon: const Icon(Icons.arrow_back, color: Colors.white),
-        onPressed: () => Navigator.pop(context),
-      ),
+      // Phase 4D: Conditionally hide back button when accessed from app shell
+      leading: widget.hideBackButton
+          ? null
+          : IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.white),
+              onPressed: () => Navigator.pop(context),
+            ),
+      automaticallyImplyLeading: !widget.hideBackButton,
       actions: [
         if (_notifications.isNotEmpty)
           IconButton(

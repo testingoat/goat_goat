@@ -47,6 +47,9 @@ dependencies:
   # Persistent storage for login sessions
   shared_preferences: ^2.2.2
 
+  # Voice search functionality - temporarily disabled for build compatibility
+  # speech_to_text: ^7.2.0
+
   # Firebase dependencies for FCM push notifications
   # Do NOT add firebase_*_web directly; web implementations are pulled transitively.
   firebase_core: ^3.9.0
@@ -65,6 +68,9 @@ dependencies:
 
   # Phase C.1: Places API Autocomplete (using HTTP directly)
   # google_places_flutter: ^2.1.0  # Not needed - using HTTP directly
+
+  # Modern animated navigation bar
+  google_nav_bar: ^5.0.7
 
 dev_dependencies:
   flutter_test:

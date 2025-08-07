@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import '../services/product_review_service.dart';
+import '../services/product_review_cache.dart'; // Phase 4I: Performance optimization
 
 /// Product Review Summary Widget
 ///
@@ -21,6 +23,8 @@ class ProductReviewSummary extends StatefulWidget {
 
 class _ProductReviewSummaryState extends State<ProductReviewSummary> {
   final ProductReviewService _reviewService = ProductReviewService();
+  final ProductReviewCache _reviewCache =
+      ProductReviewCache(); // Phase 4I: Performance optimization
   Map<String, dynamic>? _stats;
   bool _isLoading = true;
 
@@ -30,11 +34,32 @@ class _ProductReviewSummaryState extends State<ProductReviewSummary> {
     _loadReviewStats();
   }
 
+  /// Phase 4I: Optimized review stats loading with caching
   Future<void> _loadReviewStats() async {
+    // Check cache first
+    final cachedStats = _reviewCache.getCachedReviewStats(widget.productId);
+    if (cachedStats != null) {
+      if (mounted) {
+        setState(() {
+          _stats = cachedStats;
+          _isLoading = false;
+        });
+      }
+      return;
+    }
+
+    // Fetch from API if not cached
     final result = await _reviewService.getProductReviewStats(widget.productId);
     if (mounted) {
+      final stats = result['success'] ? result['stats'] : null;
+
+      // Cache the result
+      if (stats != null) {
+        _reviewCache.cacheReviewStats(widget.productId, stats);
+      }
+
       setState(() {
-        _stats = result['success'] ? result['stats'] : null;
+        _stats = stats;
         _isLoading = false;
       });
     }
@@ -62,10 +87,7 @@ class _ProductReviewSummaryState extends State<ProductReviewSummary> {
           SizedBox(width: 4),
           Text(
             'No reviews yet',
-            style: TextStyle(
-              color: Colors.grey,
-              fontSize: 12,
-            ),
+            style: TextStyle(color: Colors.grey, fontSize: 12),
           ),
         ],
       );
@@ -88,18 +110,12 @@ class _ProductReviewSummaryState extends State<ProductReviewSummary> {
         const SizedBox(width: 4),
         Text(
           averageRating.toStringAsFixed(1),
-          style: const TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 12,
-          ),
+          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
         ),
         const SizedBox(width: 4),
         Text(
           '($totalReviews)',
-          style: TextStyle(
-            color: Colors.grey[600],
-            fontSize: 12,
-          ),
+          style: TextStyle(color: Colors.grey[600], fontSize: 12),
         ),
       ],
     );
@@ -115,18 +131,12 @@ class _ProductReviewSummaryState extends State<ProductReviewSummary> {
             const SizedBox(width: 8),
             Text(
               averageRating.toStringAsFixed(1),
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-              ),
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
             ),
             const SizedBox(width: 8),
             Text(
               '$totalReviews review${totalReviews != 1 ? 's' : ''}',
-              style: TextStyle(
-                color: Colors.grey[600],
-                fontSize: 14,
-              ),
+              style: TextStyle(color: Colors.grey[600], fontSize: 14),
             ),
           ],
         ),
@@ -143,26 +153,19 @@ class _ProductReviewSummaryState extends State<ProductReviewSummary> {
     return Column(
       children: [
         for (int i = 5; i >= 1; i--)
-          _buildRatingBar(
-            i,
-            _stats!['rating_${i}_count'] ?? 0,
-            totalReviews,
-          ),
+          _buildRatingBar(i, _stats!['rating_${i}_count'] ?? 0, totalReviews),
       ],
     );
   }
 
   Widget _buildRatingBar(int stars, int count, int total) {
     final percentage = total > 0 ? count / total : 0.0;
-    
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
         children: [
-          Text(
-            '$stars',
-            style: const TextStyle(fontSize: 12),
-          ),
+          Text('$stars', style: const TextStyle(fontSize: 12)),
           const SizedBox(width: 4),
           const Icon(Icons.star, color: Colors.amber, size: 12),
           const SizedBox(width: 8),
@@ -218,11 +221,7 @@ class _ProductReviewSummaryState extends State<ProductReviewSummary> {
           color = Colors.grey;
         }
 
-        return Icon(
-          iconData,
-          color: color,
-          size: size,
-        );
+        return Icon(iconData, color: color, size: size);
       }),
     );
   }
@@ -332,7 +331,10 @@ class _ReviewCardState extends State<ReviewCard> {
                 const SizedBox(width: 8),
                 if (isVerified)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFF059669),
                       borderRadius: BorderRadius.circular(4),
@@ -349,24 +351,18 @@ class _ReviewCardState extends State<ReviewCard> {
                 const Spacer(),
                 Text(
                   _formatDate(createdAt),
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontSize: 12,
-                  ),
+                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
                 ),
               ],
             ),
             const SizedBox(height: 8),
-            
+
             // Customer name
             Text(
               customerName,
-              style: const TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
-              ),
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
             ),
-            
+
             // Review title
             if (reviewTitle != null && reviewTitle.isNotEmpty) ...[
               const SizedBox(height: 4),
@@ -378,16 +374,13 @@ class _ReviewCardState extends State<ReviewCard> {
                 ),
               ),
             ],
-            
+
             // Review text
             if (reviewText != null && reviewText.isNotEmpty) ...[
               const SizedBox(height: 8),
-              Text(
-                reviewText,
-                style: const TextStyle(fontSize: 14),
-              ),
+              Text(reviewText, style: const TextStyle(fontSize: 14)),
             ],
-            
+
             // Helpfulness voting
             if (widget.currentCustomerId != null) ...[
               const SizedBox(height: 12),
@@ -462,10 +455,7 @@ class _ReviewCardState extends State<ReviewCard> {
             const SizedBox(width: 4),
             Text(
               '$count',
-              style: TextStyle(
-                color: Colors.grey[600],
-                fontSize: 12,
-              ),
+              style: TextStyle(color: Colors.grey[600], fontSize: 12),
             ),
           ],
         ),

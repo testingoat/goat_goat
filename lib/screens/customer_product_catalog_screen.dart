@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart'; // Phase 4I: For kDebugMode
 import '../supabase_service.dart';
 import '../services/shopping_cart_service.dart';
 import '../services/customer_notification_service.dart';
-import '../services/auth_service.dart';
+import '../services/notification_count_cache.dart'; // Phase 4I: Performance optimization
+// Phase 4E: AuthService import removed - logout functionality moved to Account section
 import '../services/delivery_address_state.dart';
+import '../services/delivery_error_notification_service.dart';
 import '../config/feature_flags.dart';
 import '../config/maps_config.dart';
 import '../widgets/product_review_widget.dart';
@@ -11,6 +14,7 @@ import '../widgets/delivery_location_section.dart';
 import '../widgets/section_header.dart';
 import '../widgets/category_shortcut_row.dart';
 import '../widgets/address_picker.dart';
+import '../widgets/compact_location_header.dart';
 import '../config/ui_flags.dart';
 import 'customer_order_history_screen.dart';
 import 'customer_shopping_cart_screen.dart';
@@ -36,8 +40,9 @@ class _CustomerProductCatalogScreenState
   final ShoppingCartService _cartService = ShoppingCartService();
   final CustomerNotificationService _notificationService =
       CustomerNotificationService();
-  final AuthService _authService = AuthService();
+  // Phase 4E: AuthService removed - logout functionality moved to Account section
   final _searchController = TextEditingController();
+  final _scrollController = ScrollController();
 
   // --- Delivery fee diagnostics state (non-invasive) ---
   final DeliveryFeeService _deliveryFeeService = DeliveryFeeService();
@@ -47,18 +52,23 @@ class _CustomerProductCatalogScreenState
   String? _lastFeeTier;
 
   List<Map<String, dynamic>> _products = [];
-  bool _isLoading = true;
+  bool _isLoading = false; // Phase 4I: Start with false for faster UI display
   String _searchQuery = '';
-  int _cartItemCount = 0;
+  // Phase 4B: _cartItemCount removed - using bottom navigation cart instead
   int _notificationCount = 0;
 
   @override
   void initState() {
     super.initState();
     _initializeAddressState();
-    _loadProducts();
-    _updateCartCount();
-    _updateNotificationCount();
+    // Phase 4I: Lazy loading - load products after UI is built (faster startup)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadProducts();
+    });
+    // Phase 4I: Lazy loading - load notification count in background
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _updateNotificationCount();
+    });
   }
 
   /// Initialize shared address state from customer data
@@ -77,32 +87,54 @@ class _CustomerProductCatalogScreenState
   @override
   void dispose() {
     _searchController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
+  /// Phase 4I: Optimized product loading with better performance
   Future<void> _loadProducts() async {
+    if (!mounted) return;
+
     setState(() {
       _isLoading = true;
     });
 
     try {
+      if (kDebugMode) {
+        print('🚀 PERFORMANCE: Loading products...');
+      }
+
       final products = await _supabaseService.getMeatProducts(
         approvalStatus: 'approved',
         isActive: true,
         searchQuery: _searchQuery.isNotEmpty ? _searchQuery : null,
         sortBy: 'name',
         ascending: true,
-        limit: 100,
+        limit: 50, // Phase 4I: Reduced from 100 to 50 for faster loading
       );
+
+      if (!mounted) return;
 
       setState(() {
         _products = products;
         _isLoading = false;
       });
+
+      if (kDebugMode) {
+        print(
+          '🚀 PERFORMANCE: Loaded ${products.length} products successfully',
+        );
+      }
     } catch (e) {
+      if (!mounted) return;
+
       setState(() {
         _isLoading = false;
       });
+
+      if (kDebugMode) {
+        print('❌ PERFORMANCE: Product loading failed: $e');
+      }
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -116,6 +148,7 @@ class _CustomerProductCatalogScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // Important: do not add a bottomNavigationBar here to avoid duplicates with CustomerAppShell
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -127,62 +160,130 @@ class _CustomerProductCatalogScreenState
             ],
           ),
         ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              _buildAppBar(),
+        child: SafeArea(child: _buildResponsiveBody()),
+      ),
+    );
+  }
 
-              // Phase 3A.3: Delivery Address Pill (feature flagged)
-              if (kShowDeliveryAddressPill)
-                AddressPicker(
+  /// Build responsive body with proper scrolling behavior
+  Widget _buildResponsiveBody() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isTablet = screenWidth >= 600;
+
+    return CustomScrollView(
+      controller: _scrollController,
+      slivers: [
+        // App Bar
+        SliverToBoxAdapter(child: _buildAppBar()),
+
+        // Compact Location Header (New Design - Feature Flagged)
+        if (UiFlags.compactLocationHeaderEnabled)
+          SliverToBoxAdapter(
+            child: CompactLocationHeader(
+              customerId: widget.customer['id'] as String,
+              initialAddress: widget.customer['address'] as String?,
+              searchController: _searchController,
+              searchQuery: _searchQuery,
+              scrollController:
+                  _scrollController, // For scroll-collapse behavior
+              onSearchChanged: () {
+                setState(() {
+                  _searchQuery = _searchController.text;
+                });
+                _loadProducts();
+              },
+              onAddressChanged: (address, locationData) async {
+                // Wire to delivery fee calculation
+                final subtotal = await _safeGetCartSubtotal();
+                print(
+                  '🧩 CATALOG-FEE: CompactHeader change → addr="$address", subtotal=₹${subtotal.toStringAsFixed(0)}',
+                );
+                await _calculateAndShowDeliveryFee(address, subtotal);
+              },
+              onNotificationTap: () {
+                // Phase 4F: Navigate to notifications (functional implementation)
+                _navigateToNotifications();
+              },
+              notificationCount:
+                  _notificationCount, // Phase 4F: Pass notification count for badge
+              showVoiceSearch: true, // Phase 3: Voice search enabled
+            ),
+          ),
+
+        // Legacy UI (Old Design - When compact header is disabled)
+        if (!UiFlags.compactLocationHeaderEnabled) ...[
+          // Delivery Address Pill (feature flagged)
+          if (kShowDeliveryAddressPill)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: isTablet ? 24 : 12,
+                  vertical: 8,
+                ),
+                child: AddressPicker(
                   isPillMode: true,
                   customerId: widget.customer['id'] as String,
                   initialAddress: widget.customer['address'] as String?,
                   onAddressChanged: (address, locationData) async {
                     // Wire to delivery fee calculation
                     final subtotal = await _safeGetCartSubtotal();
-                    print('🧩 CATALOG-FEE: AddressPicker change → addr="$address", subtotal=₹${subtotal.toStringAsFixed(0)}');
+                    print(
+                      '🧩 CATALOG-FEE: AddressPicker change → addr="$address", subtotal=₹${subtotal.toStringAsFixed(0)}',
+                    );
                     await _calculateAndShowDeliveryFee(address, subtotal);
                   },
                 ),
-
-              _buildSearchBar(),
-
-              // Category shortcuts just under search (feature-flagged via UiFlags)
-              if (UiFlags.categoryShortcutsEnabled) ...[
-                const SectionHeader(title: 'Popular categories'),
-                CategoryShortcutRow(
-                  categories: _defaultCategories,
-                  onTap: (cat) {
-                    // Apply as a quick search and reload results
-                    _searchController.text = cat.query ?? cat.label;
-                    setState(() {
-                      _searchQuery = _searchController.text;
-                    });
-                    _loadProducts();
-                  },
-                ),
-              ],
-
-              // Google Maps delivery location section (feature flagged)
-              // UI Fix: Hide redundant map section when kHideHomeMapSection is true
-              if (kEnableCatalogMap && !kHideHomeMapSection)
-                DeliveryLocationSection(
-                  customerId: widget.customer['id'],
-                  onLocationSelected: (locationData) async {
-                    final address = (locationData['address'] as String?) ?? '';
-                    final subtotal = await _safeGetCartSubtotal();
-                    print('🧩 CATALOG-FEE: Map selection → addr="$address", subtotal=₹${subtotal.toStringAsFixed(0)}');
-                    await _calculateAndShowDeliveryFee(address, subtotal);
-                  },
-                ),
-              Expanded(
-                child: _isLoading ? _buildLoadingState() : _buildProductGrid(),
               ),
-            ],
+            ),
+
+          // Search Bar
+          SliverToBoxAdapter(child: _buildSearchBar()),
+        ],
+
+        // Category shortcuts (feature-flagged via UiFlags)
+        if (UiFlags.categoryShortcutsEnabled) ...[
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: isTablet ? 24 : 12),
+              child: const SectionHeader(title: 'Popular categories'),
+            ),
           ),
-        ),
-      ),
+          SliverToBoxAdapter(
+            child: CategoryShortcutRow(
+              categories: _defaultCategories,
+              onTap: (cat) {
+                // Apply as a quick search and reload results
+                _searchController.text = cat.query ?? cat.label;
+                setState(() {
+                  _searchQuery = _searchController.text;
+                });
+                _loadProducts();
+              },
+            ),
+          ),
+        ],
+
+        // Google Maps delivery location section (feature flagged)
+        if (kEnableCatalogMap && !kHideHomeMapSection)
+          SliverToBoxAdapter(
+            child: DeliveryLocationSection(
+              customerId: widget.customer['id'],
+              onLocationSelected: (locationData) async {
+                final address = (locationData['address'] as String?) ?? '';
+                final subtotal = await _safeGetCartSubtotal();
+                print(
+                  '🧩 CATALOG-FEE: Map selection → addr="$address", subtotal=₹${subtotal.toStringAsFixed(0)}',
+                );
+                await _calculateAndShowDeliveryFee(address, subtotal);
+              },
+            ),
+          ),
+
+        // Product Grid
+        _isLoading
+            ? SliverToBoxAdapter(child: _buildLoadingState())
+            : _buildResponsiveProductGrid(isTablet),
+      ],
     );
   }
 
@@ -198,12 +299,9 @@ class _CustomerProductCatalogScreenState
       ),
       child: Row(
         children: [
-          IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
-            onPressed: () => Navigator.pop(context),
-            tooltip: 'Back',
-          ),
-          const SizedBox(width: 6),
+          // Phase 4A: Back button removed for logged-in users
+          // Users should only be able to exit by logging out
+          const SizedBox(width: 12), // Maintain spacing
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -232,128 +330,8 @@ class _CustomerProductCatalogScreenState
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (FeatureFlags.isEnabled('order_history'))
-                IconButton(
-                  icon: const Icon(
-                    Icons.history,
-                    color: Colors.white,
-                    size: 22,
-                  ),
-                  onPressed: () => _navigateToOrderHistory(),
-                  tooltip: 'Order History',
-                ),
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  IconButton(
-                    icon: const Icon(
-                      Icons.notifications,
-                      color: Colors.white,
-                      size: 22,
-                    ),
-                    onPressed: () => _navigateToNotifications(),
-                    tooltip: 'Notifications',
-                  ),
-                  if (_notificationCount > 0)
-                    Positioned(
-                      right: 6,
-                      top: 6,
-                      child: Container(
-                        padding: const EdgeInsets.all(1.5),
-                        decoration: BoxDecoration(
-                          color: Colors.red,
-                          borderRadius: BorderRadius.circular(10),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.15),
-                              blurRadius: 2,
-                            ),
-                          ],
-                        ),
-                        constraints: const BoxConstraints(
-                          minWidth: 14,
-                          minHeight: 14,
-                        ),
-                        child: Text(
-                          '$_notificationCount',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  IconButton(
-                    icon: const Icon(
-                      Icons.shopping_cart,
-                      color: Colors.white,
-                      size: 22,
-                    ),
-                    onPressed: () => _navigateToShoppingCart(),
-                    tooltip: 'Shopping Cart',
-                  ),
-                  if (_cartItemCount > 0)
-                    Positioned(
-                      right: 6,
-                      top: 6,
-                      child: Container(
-                        padding: const EdgeInsets.all(1.5),
-                        decoration: BoxDecoration(
-                          color: Colors.red,
-                          borderRadius: BorderRadius.circular(10),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.15),
-                              blurRadius: 2,
-                            ),
-                          ],
-                        ),
-                        constraints: const BoxConstraints(
-                          minWidth: 14,
-                          minHeight: 14,
-                        ),
-                        child: Text(
-                          '$_cartItemCount',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              PopupMenuButton<String>(
-                icon: const Icon(
-                  Icons.more_vert,
-                  color: Colors.white,
-                  size: 22,
-                ),
-                onSelected: (value) {
-                  if (value == 'logout') _showLogoutDialog();
-                },
-                itemBuilder: (context) => const [
-                  PopupMenuItem(
-                    value: 'logout',
-                    child: Row(
-                      children: [
-                        Icon(Icons.logout, color: Colors.red),
-                        SizedBox(width: 8),
-                        Text('Logout'),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+              // Phase 4C: Order History and Notification icons moved to Account section
+              // Phase 4C: Logout moved to Account section only
             ],
           ),
         ],
@@ -362,8 +340,12 @@ class _CustomerProductCatalogScreenState
   }
 
   Widget _buildSearchBar() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isTablet = screenWidth >= 600;
+    final horizontalMargin = isTablet ? 24.0 : 12.0;
+
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      margin: EdgeInsets.symmetric(horizontal: horizontalMargin, vertical: 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(10),
@@ -479,19 +461,79 @@ class _CustomerProductCatalogScreenState
       );
     }
 
+    // Phase 4H: Updated regular grid to match responsive improvements
     return GridView.builder(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(10), // Phase 4H: Reduced padding
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        childAspectRatio: 0.78,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
+        childAspectRatio: 0.82, // Phase 4H: Better proportions
+        crossAxisSpacing: 10, // Phase 4H: Tighter spacing
+        mainAxisSpacing: 10, // Phase 4H: Tighter spacing
       ),
       itemCount: _products.length,
       itemBuilder: (context, index) {
         final product = _products[index];
         return _buildProductCard(product);
       },
+    );
+  }
+
+  /// Build responsive product grid as a Sliver for CustomScrollView
+  Widget _buildResponsiveProductGrid(bool isTablet) {
+    if (_products.isEmpty) {
+      return SliverToBoxAdapter(
+        child: Container(
+          height: 300,
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.search_off, size: 64, color: Colors.grey[400]),
+                const SizedBox(height: 16),
+                Text(
+                  _searchQuery.isNotEmpty
+                      ? 'No products found for \"$_searchQuery\"'
+                      : 'No products available',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Check back later for fresh products',
+                  style: TextStyle(fontSize: 14, color: Colors.grey),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Responsive grid configuration - Phase 4H: Optimized proportions
+    final crossAxisCount = isTablet ? 3 : 2;
+    final childAspectRatio = isTablet
+        ? 0.85
+        : 0.82; // Phase 4H: Better proportions
+    final padding = isTablet ? 20.0 : 10.0; // Phase 4H: Reduced padding
+    final spacing = isTablet ? 14.0 : 10.0; // Phase 4H: Tighter spacing
+
+    return SliverPadding(
+      padding: EdgeInsets.all(padding),
+      sliver: SliverGrid(
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: crossAxisCount,
+          childAspectRatio: childAspectRatio,
+          crossAxisSpacing: spacing,
+          mainAxisSpacing: spacing,
+        ),
+        delegate: SliverChildBuilderDelegate((context, index) {
+          final product = _products[index];
+          return _buildProductCard(product);
+        }, childCount: _products.length),
+      ),
     );
   }
 
@@ -530,11 +572,12 @@ class _CustomerProductCatalogScreenState
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Phase 4H: Compact image section with better proportions
                   Hero(
                     tag: 'product-${product['id']}',
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
-                      height: 100,
+                      height: 80, // Phase 4H: Reduced from 100px to 80px
                       decoration: BoxDecoration(
                         color: const Color(
                           0xFF059669,
@@ -550,78 +593,112 @@ class _CustomerProductCatalogScreenState
                           duration: const Duration(milliseconds: 200),
                           child: const Icon(
                             Icons.fastfood,
-                            size: 40,
+                            size: 36, // Phase 4H: Slightly smaller icon
                             color: Color(0xFF059669),
                           ),
                         ),
                       ),
                     ),
                   ),
-                  Container(
-                    height: 115,
-                    padding: const EdgeInsets.all(8),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          product['name'] ?? 'Product',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '₹${product['price'] ?? 0}/kg',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            color: Color(0xFF059669),
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        if (product['sellers'] != null)
-                          Text(
-                            'by ${product['sellers']['seller_name']}',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: Colors.grey[600],
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        const SizedBox(height: 4),
-                        ProductReviewSummary(
-                          productId: product['id'],
-                          showFullStats: false,
-                        ),
-                        const Spacer(),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 28,
-                          child: ElevatedButton(
-                            onPressed: () => _addToCart(product),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF059669),
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(6),
+                  // Phase 4H: Optimized content section with better spacing
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        10,
+                        8,
+                        10,
+                        8,
+                      ), // Phase 4H: Asymmetric padding
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment
+                            .spaceBetween, // Phase 4H: Better distribution
+                        children: [
+                          // Top content section
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                product['name'] ?? 'Product',
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black87,
+                                  height: 1.2, // Phase 4H: Tighter line height
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                              padding: const EdgeInsets.symmetric(vertical: 4),
-                            ),
-                            child: const Text(
-                              'Add to Cart',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
+                              const SizedBox(
+                                height: 6,
+                              ), // Phase 4H: Optimized spacing
+                              Text(
+                                '₹${product['price'] ?? 0}/kg',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  color: Color(0xFF059669),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              if (product['sellers'] != null) ...[
+                                const SizedBox(
+                                  height: 3,
+                                ), // Phase 4H: Minimal spacing
+                                Text(
+                                  'by ${product['sellers']['seller_name']}',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.grey[600],
+                                    height:
+                                        1.1, // Phase 4H: Compact line height
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                              const SizedBox(
+                                height: 6,
+                              ), // Phase 4H: Compact spacing
+                              ProductReviewSummary(
+                                productId: product['id'],
+                                showFullStats: false,
+                              ),
+                            ],
+                          ),
+
+                          // Bottom button section - Phase 4H: No spacer, fixed positioning
+                          SizedBox(
+                            width: double.infinity,
+                            height: 32, // Phase 4H: Slightly taller button
+                            child: ElevatedButton(
+                              onPressed: () => _addToCart(product),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF059669),
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(
+                                    8,
+                                  ), // Phase 4H: Slightly more rounded
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 6,
+                                ), // Phase 4H: Better padding
+                                elevation: 0, // Phase 4H: Flat design
+                              ),
+                              child: const Text(
+                                'Add to Cart',
+                                style: TextStyle(
+                                  fontSize:
+                                      12, // Phase 4H: Slightly larger text
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing:
+                                      0.3, // Phase 4H: Better letter spacing
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ],
@@ -646,7 +723,10 @@ class _CustomerProductCatalogScreenState
     }
   }
 
-  Future<void> _calculateAndShowDeliveryFee(String address, double subtotal) async {
+  Future<void> _calculateAndShowDeliveryFee(
+    String address,
+    double subtotal,
+  ) async {
     if (address.trim().isEmpty) {
       print('⚠️ CATALOG-FEE: Empty address, skipping fee calc');
       return;
@@ -661,11 +741,14 @@ class _CustomerProductCatalogScreenState
     if (!(result['success'] as bool)) {
       print('❌ CATALOG-FEE: Fee calc failed → ${result['error']}');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Delivery fee unavailable: ${result['error']}'),
-            backgroundColor: Colors.orange,
-            duration: const Duration(seconds: 2),
+        final errorType = DeliveryErrorNotificationService.determineErrorType(
+          result,
+        );
+        DeliveryErrorNotificationService.showDeliveryError(
+          context,
+          errorType: errorType,
+          customMessage: DeliveryErrorNotificationService.getErrorMessage(
+            result['error'].toString(),
           ),
         );
       }
@@ -677,7 +760,9 @@ class _CustomerProductCatalogScreenState
     final tier = result['tier'] as String?;
     final reason = result['reason'] as String?;
 
-    print('💰 CATALOG-FEE: success fee=₹${fee.toStringAsFixed(0)} dist=${distanceKm?.toStringAsFixed(2)}km tier=$tier reason=${reason ?? '-'}');
+    print(
+      '💰 CATALOG-FEE: success fee=₹${fee.toStringAsFixed(0)} dist=${distanceKm?.toStringAsFixed(2)}km tier=$tier reason=${reason ?? '-'}',
+    );
 
     if (mounted) {
       setState(() {
@@ -688,9 +773,10 @@ class _CustomerProductCatalogScreenState
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(reason == 'free_delivery_threshold'
-              ? 'Free delivery applied (subtotal qualifies)'
-              : 'Estimated delivery fee: ₹${fee.toStringAsFixed(0)}'
+          content: Text(
+            reason == 'free_delivery_threshold'
+                ? 'Free delivery applied (subtotal qualifies)'
+                : 'Estimated delivery fee: ₹${fee.toStringAsFixed(0)}',
           ),
           backgroundColor: const Color(0xFF059669),
           duration: const Duration(seconds: 2),
@@ -776,7 +862,7 @@ class _CustomerProductCatalogScreenState
               duration: const Duration(seconds: 2),
             ),
           );
-          _updateCartCount();
+          // Phase 4B: _updateCartCount() removed - using bottom navigation cart instead
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -800,31 +886,29 @@ class _CustomerProductCatalogScreenState
     }
   }
 
-  Future<void> _updateCartCount() async {
-    try {
-      final summary = await _cartService.getCartSummary(widget.customer['id']);
-      if (mounted) {
-        setState(() {
-          _cartItemCount = summary['total_items'] ?? 0;
-        });
-      }
-    } catch (e) {
-      // ignore
-    }
-  }
+  // Phase 4B: _updateCartCount() method removed - using bottom navigation cart instead
 
+  /// Phase 4I: Optimized notification count with caching for performance
   Future<void> _updateNotificationCount() async {
     try {
-      final count = await _notificationService.getUnreadNotificationCount(
-        widget.customer['id'],
-      );
+      final cache = NotificationCountCache();
+      final count = await cache.getNotificationCount(widget.customer['id']);
+
       if (mounted) {
         setState(() {
           _notificationCount = count;
         });
       }
     } catch (e) {
-      // ignore
+      // Silently handle error - notification count is not critical
+      if (kDebugMode) {
+        print('❌ PERFORMANCE: Notification count update failed: $e');
+      }
+      if (mounted) {
+        setState(() {
+          _notificationCount = 0;
+        });
+      }
     }
   }
 
@@ -848,19 +932,9 @@ class _CustomerProductCatalogScreenState
     );
   }
 
-  void _navigateToShoppingCart() {
-    FeatureFlags.logFeatureUsage('shopping_cart', 'navigation_from_catalog');
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) =>
-            CustomerShoppingCartScreen(customer: widget.customer),
-      ),
-    ).then((_) {
-      _updateCartCount();
-    });
-  }
+  // Phase 4B: _navigateToShoppingCart() method removed - using bottom navigation cart instead
 
+  /// Phase 4I: Optimized navigation with cache invalidation
   void _navigateToNotifications() {
     FeatureFlags.logFeatureUsage('notifications', 'navigation_from_catalog');
     Navigator.push(
@@ -870,51 +944,14 @@ class _CustomerProductCatalogScreenState
             CustomerNotificationsScreen(customer: widget.customer),
       ),
     ).then((_) {
+      // Phase 4I: Invalidate cache when returning from notifications
+      final cache = NotificationCountCache();
+      cache.invalidateCache(widget.customer['id']);
       _updateNotificationCount();
     });
   }
 
-  void _showLogoutDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Logout'),
-        content: const Text('Are you sure you want to logout?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _performLogout();
-            },
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Logout'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _performLogout() async {
-    try {
-      await _authService.clearSession();
-      if (mounted) {
-        Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Logout failed: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
+  // Phase 4E: Logout methods removed - logout functionality moved to Account section only
 }
 
 // Single file-level constant for default categories

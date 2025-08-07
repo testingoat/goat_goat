@@ -20,19 +20,25 @@ class CategoryShortcutRow extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isTablet = screenWidth >= 600;
+    final horizontalPadding = isTablet ? 24.0 : 12.0;
+    final itemSpacing = isTablet ? 10.0 : 8.0;
+
     return Padding(
       padding: const EdgeInsets.only(top: 4, bottom: 8),
       child: SizedBox(
-        height: 76,
+        height: 64, // Reduced from 76px to 64px
         child: ListView.separated(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
+          padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
           scrollDirection: Axis.horizontal,
           itemCount: categories.length,
-          separatorBuilder: (_, __) => const SizedBox(width: 10),
+          separatorBuilder: (_, __) => SizedBox(width: itemSpacing),
           itemBuilder: (context, index) {
             final item = categories[index];
             return _CategoryChip(
               item: item,
+              isTablet: isTablet,
               onTap: () {
                 logUi('Category shortcut tapped: ${item.label}');
                 onTap(item);
@@ -48,8 +54,13 @@ class CategoryShortcutRow extends StatelessWidget {
 class _CategoryChip extends StatefulWidget {
   final CategoryShortcut item;
   final VoidCallback onTap;
+  final bool isTablet;
 
-  const _CategoryChip({required this.item, required this.onTap});
+  const _CategoryChip({
+    required this.item,
+    required this.onTap,
+    this.isTablet = false,
+  });
 
   @override
   State<_CategoryChip> createState() => _CategoryChipState();
@@ -62,6 +73,11 @@ class _CategoryChipState extends State<_CategoryChip> {
   Widget build(BuildContext context) {
     const accent = Color(0xFF059669);
 
+    // Responsive sizing
+    final chipWidth = widget.isTablet ? 80.0 : 72.0;
+    final horizontalPadding = widget.isTablet ? 10.0 : 8.0;
+    final verticalPadding = widget.isTablet ? 8.0 : 6.0;
+
     return GestureDetector(
       onTapDown: (_) => setState(() => _pressed = true),
       onTapCancel: () => setState(() => _pressed = false),
@@ -69,8 +85,11 @@ class _CategoryChipState extends State<_CategoryChip> {
       onTap: widget.onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 120),
-        width: 88,
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        width: chipWidth,
+        padding: EdgeInsets.symmetric(
+          horizontal: horizontalPadding,
+          vertical: verticalPadding,
+        ),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
@@ -82,7 +101,9 @@ class _CategoryChipState extends State<_CategoryChip> {
             ),
           ],
           border: Border.all(
-            color: _pressed ? accent.withValues(alpha: 0.5) : const Color(0x11000000),
+            color: _pressed
+                ? accent.withValues(alpha: 0.5)
+                : const Color(0x11000000),
             width: 1,
           ),
         ),
@@ -91,20 +112,24 @@ class _CategoryChipState extends State<_CategoryChip> {
           children: [
             Icon(
               widget.item.icon,
-              size: 22,
+              size: widget.isTablet ? 20.0 : 18.0, // Responsive icon size
               color: _pressed ? accent : Colors.grey[800],
             ),
-            const SizedBox(height: 6),
+            SizedBox(
+              height: widget.isTablet ? 4.0 : 2.0,
+            ), // Phase 4I: Reduced spacing to fix overflow
             Text(
               widget.item.label,
               textAlign: TextAlign.center,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                fontSize: 12,
+                fontSize: widget.isTablet
+                    ? 11.0
+                    : 10.0, // Phase 4I: Reduced font size to fix overflow
                 fontWeight: FontWeight.w600,
                 color: Colors.grey[900],
-                height: 1.1,
+                height: 1.0, // Phase 4I: Reduced line height to fix overflow
               ),
             ),
           ],

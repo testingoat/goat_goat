@@ -4,6 +4,7 @@ import '../services/otp_service_fallback.dart';
 import '../services/auth_service.dart';
 import '../services/auto_location_service.dart';
 import 'customer_product_catalog_screen.dart';
+import '../main.dart';
 
 class CustomerPortalScreen extends StatefulWidget {
   const CustomerPortalScreen({super.key});
@@ -483,14 +484,12 @@ class _CustomerPortalScreenState extends State<CustomerPortalScreen> {
       // Save customer session for persistent login
       await _authService.saveCustomerSession(customer);
 
-      // Navigate to customer product catalog
+      // Navigate back to main app to trigger proper routing with CustomerAppShell
       if (mounted) {
-        Navigator.pushReplacement(
+        Navigator.pushAndRemoveUntil(
           context,
-          MaterialPageRoute(
-            builder: (context) =>
-                CustomerProductCatalogScreen(customer: customer),
-          ),
+          MaterialPageRoute(builder: (context) => const MyApp()),
+          (route) => false, // Remove all previous routes
         );
 
         // Auto-fetch location after successful login (non-blocking)

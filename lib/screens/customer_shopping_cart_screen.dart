@@ -4,6 +4,7 @@ import '../services/shopping_cart_service.dart';
 import '../supabase_service.dart';
 import '../config/feature_flags.dart';
 import '../services/delivery_address_state.dart';
+import '../services/delivery_error_notification_service.dart';
 import '../widgets/address_picker.dart';
 import 'customer_checkout_screen.dart';
 
@@ -20,8 +21,14 @@ import 'customer_checkout_screen.dart';
 /// - Follows existing emerald theme and design patterns
 class CustomerShoppingCartScreen extends StatefulWidget {
   final Map<String, dynamic> customer;
+  final bool
+  hideBackButton; // Phase 4D: Hide back button when accessed from app shell
 
-  const CustomerShoppingCartScreen({super.key, required this.customer});
+  const CustomerShoppingCartScreen({
+    super.key,
+    required this.customer,
+    this.hideBackButton = false,
+  });
 
   @override
   State<CustomerShoppingCartScreen> createState() =>
@@ -63,10 +70,12 @@ class _CustomerShoppingCartScreenState
   /// Load cart items and summary
   Future<void> _loadCartItems() async {
     try {
-      setState(() {
-        _isLoading = true;
-        _errorMessage = null;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = true;
+          _errorMessage = null;
+        });
+      }
 
       final customerId = widget.customer['id'] as String;
 
@@ -79,19 +88,23 @@ class _CustomerShoppingCartScreenState
         ),
       ]);
 
-      setState(() {
-        _cartItems = results[0] as List<Map<String, dynamic>>;
-        _cartSummary = results[1] as Map<String, dynamic>;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _cartItems = results[0] as List<Map<String, dynamic>>;
+          _cartSummary = results[1] as Map<String, dynamic>;
+          _isLoading = false;
+        });
+      }
 
       print('🛒 CART - Loaded ${_cartItems.length} items for customer');
     } catch (e) {
       print('❌ CART - Error loading data: $e');
-      setState(() {
-        _isLoading = false;
-        _errorMessage = 'Failed to load cart. Please try again.';
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'Failed to load cart. Please try again.';
+        });
+      }
     }
   }
 
@@ -110,6 +123,36 @@ class _CustomerShoppingCartScreenState
     });
   }
 
+  /// Validate address and show appropriate notifications
+  void _validateAndNotifyAddress(String address) {
+    // Check if address is too short or incomplete
+    if (address.length < 5) {
+      DeliveryErrorNotificationService.showDeliveryError(
+        context,
+        errorType: 'incomplete_address',
+        customMessage: 'Please enter a complete address',
+        duration: const Duration(seconds: 2),
+      );
+      return;
+    }
+
+    // Check if address looks like just a city code (like "bhm")
+    if (address.length <= 10 &&
+        !address.contains(' ') &&
+        !address.contains(',')) {
+      DeliveryErrorNotificationService.showDeliveryError(
+        context,
+        errorType: 'incomplete_address',
+        customMessage: 'Please enter full address with area details',
+        duration: const Duration(seconds: 3),
+      );
+      return;
+    }
+
+    // Address looks reasonable - no immediate notification needed
+    // Delivery fee calculation will handle further validation
+  }
+
   /// Load customer's primary address to auto-populate delivery address field
   Future<void> _loadCustomerAddress() async {
     try {
@@ -123,10 +166,12 @@ class _CustomerShoppingCartScreenState
           DeliveryAddressState.belongsToCustomer(customerId)) {
         final sharedAddress = DeliveryAddressState.getCurrentAddress();
         if (sharedAddress != null) {
-          setState(() {
-            _deliveryAddress = sharedAddress;
-            _deliveryAddressController.text = sharedAddress;
-          });
+          if (mounted) {
+            setState(() {
+              _deliveryAddress = sharedAddress;
+              _deliveryAddressController.text = sharedAddress;
+            });
+          }
           print(
             '✅ CART - Using shared state address: ${sharedAddress.length > 50 ? '${sharedAddress.substring(0, 50)}...' : sharedAddress}',
           );
@@ -173,10 +218,12 @@ class _CustomerShoppingCartScreenState
 
       // Auto-populate the address field if we found an address
       if (primaryAddress != null && primaryAddress.trim().isNotEmpty) {
-        setState(() {
-          _deliveryAddress = primaryAddress;
-          _deliveryAddressController.text = primaryAddress!;
-        });
+        if (mounted) {
+          setState(() {
+            _deliveryAddress = primaryAddress;
+            _deliveryAddressController.text = primaryAddress!;
+          });
+        }
 
         print(
           '✅ CART - Auto-populated delivery address: ${primaryAddress.substring(0, 50)}...',
@@ -212,10 +259,14 @@ class _CustomerShoppingCartScreenState
       ),
       backgroundColor: Colors.green[600],
       elevation: 0,
-      leading: IconButton(
-        icon: const Icon(Icons.arrow_back, color: Colors.white),
-        onPressed: () => Navigator.pop(context),
-      ),
+      // Phase 4D: Conditionally hide back button when accessed from app shell
+      leading: widget.hideBackButton
+          ? null
+          : IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.white),
+              onPressed: () => Navigator.pop(context),
+            ),
+      automaticallyImplyLeading: !widget.hideBackButton,
       actions: [
         if (_cartItems.isNotEmpty)
           IconButton(
@@ -393,12 +444,22 @@ class _CustomerShoppingCartScreenState
             hintText: 'Enter your delivery address',
             customerId: widget.customer['id'] as String,
             onAddressChanged: (address, locationData) {
-              setState(() {
-                _deliveryAddress = address.trim().isEmpty
-                    ? null
-                    : address.trim();
-                _deliveryAddressController.text = address;
-              });
+              final trimmedAddress = address.trim();
+
+              if (mounted) {
+                setState(() {
+                  _deliveryAddress = trimmedAddress.isEmpty
+                      ? null
+                      : trimmedAddress;
+                  _deliveryAddressController.text = address;
+                });
+              }
+
+              // Validate address and show notifications
+              if (trimmedAddress.isNotEmpty) {
+                _validateAndNotifyAddress(trimmedAddress);
+              }
+
               // Preserve existing debounced cart reload functionality
               _debounceCartReload();
             },
@@ -455,54 +516,8 @@ class _CustomerShoppingCartScreenState
               _buildSummaryRow('Subtotal', subtotal, false),
 
               // Delivery Fee
-              if (deliveryFee > 0) ...[
-                const SizedBox(height: 8),
-                _buildSummaryRow('Delivery Fee', deliveryFee, false),
-                if (deliveryDetails != null &&
-                    deliveryDetails['distance_km'] != null)
-                  Padding(
-                    padding: const EdgeInsets.only(left: 16, top: 4),
-                    child: Text(
-                      '${deliveryDetails['distance_km'].toStringAsFixed(1)}km • ${deliveryDetails['tier'] ?? 'Standard rate'}',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.7),
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
-              ] else if (deliveryDetails != null &&
-                  deliveryDetails['reason'] == 'free_delivery_threshold') ...[
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Delivery Fee',
-                      style: TextStyle(color: Colors.white, fontSize: 16),
-                    ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          'FREE',
-                          style: TextStyle(
-                            color: Colors.yellow[300],
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text(
-                          'Order above ₹${deliveryDetails['threshold']?.toStringAsFixed(0) ?? '500'}',
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.7),
-                            fontSize: 11,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ],
+              const SizedBox(height: 8),
+              _buildDeliveryFeeRow(deliveryFee, deliveryDetails),
 
               // Divider
               Container(
@@ -539,6 +554,142 @@ class _CustomerShoppingCartScreenState
             color: Colors.white,
             fontSize: isTotal ? 20 : 16,
             fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Build delivery fee row with proper error handling
+  Widget _buildDeliveryFeeRow(
+    double deliveryFee,
+    Map<String, dynamic>? deliveryDetails,
+  ) {
+    // Check if there's an error in delivery calculation
+    if (deliveryDetails != null && deliveryDetails['error'] != null) {
+      final errorMessage = DeliveryErrorNotificationService.getErrorMessage(
+        deliveryDetails['error'].toString(),
+      );
+
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Text(
+            'Delivery Fee',
+            style: TextStyle(color: Colors.white, fontSize: 16),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.warning_outlined,
+                    color: Colors.orange[300],
+                    size: 16,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Error',
+                    style: TextStyle(
+                      color: Colors.orange[300],
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(
+                width: 150,
+                child: Text(
+                  errorMessage,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.7),
+                    fontSize: 11,
+                  ),
+                  textAlign: TextAlign.right,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ],
+      );
+    }
+
+    // Show delivery fee if charged
+    if (deliveryFee > 0) {
+      return Column(
+        children: [
+          _buildSummaryRow('Delivery Fee', deliveryFee, false),
+          if (deliveryDetails != null && deliveryDetails['distance_km'] != null)
+            Padding(
+              padding: const EdgeInsets.only(left: 16, top: 4),
+              child: Row(
+                children: [
+                  Text(
+                    '${deliveryDetails['distance_km'].toStringAsFixed(1)}km • ${deliveryDetails['tier'] ?? 'Standard rate'}',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.7),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      );
+    }
+
+    // Show free delivery if applicable
+    if (deliveryDetails != null &&
+        deliveryDetails['reason'] == 'free_delivery_threshold') {
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Text(
+            'Delivery Fee',
+            style: TextStyle(color: Colors.white, fontSize: 16),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                'FREE',
+                style: TextStyle(
+                  color: Colors.yellow[300],
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(
+                'Order above ₹${deliveryDetails['threshold']?.toStringAsFixed(0) ?? '500'}',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.7),
+                  fontSize: 11,
+                ),
+              ),
+            ],
+          ),
+        ],
+      );
+    }
+
+    // Default case - calculating or no address
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        const Text(
+          'Delivery Fee',
+          style: TextStyle(color: Colors.white, fontSize: 16),
+        ),
+        Text(
+          'Calculating...',
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.7),
+            fontSize: 16,
+            fontStyle: FontStyle.italic,
           ),
         ),
       ],
