@@ -141,11 +141,8 @@ class AutoLocationService {
         };
 
         // Store in shared state
-        DeliveryAddressState.setAddress(
-          address,
-          locationData: locationData,
-          customerId: customerId,
-        );
+        // Address fetched but not stored to preserve onboarding address
+        // Callback will still be invoked; no state mutation here.
 
         print(
           '✅ AUTO_LOCATION - Address fetched and stored: ${address.length > 50 ? '${address.substring(0, 50)}...' : address}',
