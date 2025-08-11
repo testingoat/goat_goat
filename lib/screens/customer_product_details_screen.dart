@@ -308,29 +308,31 @@ class _CustomerProductDetailsScreenState
 
     if (productImages.isEmpty) {
       // Fallback to placeholder when no images
-      return Container(
-        height: 220,
-        margin: const EdgeInsets.symmetric(horizontal: 16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
+      return Column(
+        children: [
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.06),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: Container(
-            color: Colors.grey[100], // Consistent neutral background
-            child: const Center(
-              child: Icon(Icons.fastfood, size: 96, color: Color(0xFF059669)),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: AspectRatio(
+                aspectRatio: 1.0, // Industry-standard 1:1 square aspect ratio
+                child: _buildFallbackIcon(),
+              ),
             ),
           ),
-        ),
+          const SizedBox(height: 12),
+        ],
       );
     }
 
@@ -338,7 +340,6 @@ class _CustomerProductDetailsScreenState
     return Column(
       children: [
         Container(
-          height: 220,
           margin: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
             color: Colors.white,
@@ -353,59 +354,51 @@ class _CustomerProductDetailsScreenState
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(12),
-            child: Container(
-              color: Colors.grey[100], // Neutral background for letterboxing
-              child: PageView.builder(
-                controller: _pageController,
-                itemCount: productImages.length,
-                onPageChanged: (index) {
-                  setState(() {
-                    _currentImageIndex = index;
-                  });
-                },
-                itemBuilder: (context, index) {
-                  final imageUrl = productImages[index]['image_url'] as String?;
-                  if (imageUrl == null || imageUrl.isEmpty) {
-                    return const Center(
-                      child: Icon(
-                        Icons.fastfood,
-                        size: 96,
-                        color: Color(0xFF059669),
-                      ),
-                    );
-                  }
+            child: AspectRatio(
+              aspectRatio: 1.0, // Industry-standard 1:1 square aspect ratio
+              child: Container(
+                color: Colors.grey[100], // Neutral background
+                child: PageView.builder(
+                  controller: _pageController,
+                  itemCount: productImages.length,
+                  onPageChanged: (index) {
+                    setState(() {
+                      _currentImageIndex = index;
+                    });
+                  },
+                  itemBuilder: (context, index) {
+                    final imageUrl =
+                        productImages[index]['image_url'] as String?;
+                    if (imageUrl == null || imageUrl.isEmpty) {
+                      return _buildFallbackIcon();
+                    }
 
-                  return Image.network(
-                    imageUrl,
-                    fit: BoxFit
-                        .contain, // Show complete image, allow letterboxing
-                    alignment: Alignment.center, // Center the image
-                    width: double.infinity,
-                    height: double.infinity,
-                    errorBuilder: (context, error, stackTrace) {
-                      return const Center(
-                        child: Icon(
-                          Icons.fastfood,
-                          size: 96,
-                          color: Color(0xFF059669),
-                        ),
-                      );
-                    },
-                    loadingBuilder: (context, child, loadingProgress) {
-                      if (loadingProgress == null) return child;
-                      return Container(
-                        color: Colors.grey[100],
-                        child: const Center(
-                          child: CircularProgressIndicator(
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              Color(0xFF059669),
+                    return Image.network(
+                      imageUrl,
+                      fit: BoxFit
+                          .contain, // Show complete image for product details
+                      alignment: Alignment.center,
+                      width: double.infinity,
+                      height: double.infinity,
+                      errorBuilder: (context, error, stackTrace) =>
+                          _buildFallbackIcon(),
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return Container(
+                          color: Colors.grey[100],
+                          child: const Center(
+                            child: CircularProgressIndicator(
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Color(0xFF059669),
+                              ),
+                              strokeWidth: 2,
                             ),
                           ),
-                        ),
-                      );
-                    },
-                  );
-                },
+                        );
+                      },
+                    );
+                  },
+                ),
               ),
             ),
           ),
@@ -436,6 +429,16 @@ class _CustomerProductDetailsScreenState
             children: [_DotView(active: true, color: primaryColor)],
           ),
       ],
+    );
+  }
+
+  /// Build fallback icon with consistent styling
+  Widget _buildFallbackIcon() {
+    return Container(
+      color: Colors.grey[100],
+      child: const Center(
+        child: Icon(Icons.fastfood, size: 96, color: Color(0xFF059669)),
+      ),
     );
   }
 

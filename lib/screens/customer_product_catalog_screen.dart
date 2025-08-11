@@ -889,49 +889,57 @@ class _CustomerProductCatalogScreenState
     });
   }
 
-  /// Build product image with fallback to icon
+  /// Build product image with industry-standard square aspect ratio
   Widget _buildProductImage(Map<String, dynamic> product) {
     final productImages = product['meat_product_images'] as List? ?? [];
 
-    if (productImages.isNotEmpty) {
-      final imageUrl = productImages[0]['image_url'] as String?;
-      if (imageUrl != null && imageUrl.isNotEmpty) {
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: Container(
-            color: Colors.grey[100], // Neutral background for letterboxing
-            child: Image.network(
-              imageUrl,
-              width: double.infinity,
-              height: double.infinity,
-              fit: BoxFit.contain, // Show complete product, allow letterboxing
-              alignment: Alignment.center, // Center the image
-              errorBuilder: (context, error, stackTrace) {
-                return const Icon(
-                  Icons.fastfood,
-                  size: 36,
-                  color: Color(0xFF059669),
-                );
-              },
-              loadingBuilder: (context, child, loadingProgress) {
-                if (loadingProgress == null) return child;
-                return Container(
-                  color: Colors.grey[100],
-                  child: const Icon(
-                    Icons.fastfood,
-                    size: 36,
-                    color: Color(0xFF059669),
-                  ),
-                );
-              },
+    return AspectRatio(
+      aspectRatio: 1.0, // Industry-standard 1:1 square aspect ratio
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          color: Colors.grey[100], // Neutral background
+          child:
+              productImages.isNotEmpty && productImages[0]['image_url'] != null
+              ? _buildNetworkImage(productImages[0]['image_url'] as String)
+              : _buildFallbackIcon(),
+        ),
+      ),
+    );
+  }
+
+  /// Build network image with proper error handling
+  Widget _buildNetworkImage(String imageUrl) {
+    return Image.network(
+      imageUrl,
+      width: double.infinity,
+      height: double.infinity,
+      fit: BoxFit.cover, // Visual prominence - crop for striking appearance
+      alignment: Alignment.center,
+      errorBuilder: (context, error, stackTrace) => _buildFallbackIcon(),
+      loadingBuilder: (context, child, loadingProgress) {
+        if (loadingProgress == null) return child;
+        return Container(
+          color: Colors.grey[100],
+          child: const Center(
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF059669)),
+              strokeWidth: 2,
             ),
           ),
         );
-      }
-    }
+      },
+    );
+  }
 
-    // Fallback icon for products without images
-    return const Icon(Icons.fastfood, size: 36, color: Color(0xFF059669));
+  /// Build fallback icon with consistent styling
+  Widget _buildFallbackIcon() {
+    return Container(
+      color: Colors.grey[100],
+      child: const Center(
+        child: Icon(Icons.fastfood, size: 36, color: Color(0xFF059669)),
+      ),
+    );
   }
 }
 
