@@ -35,51 +35,58 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
   bool _isLoading = false;
   bool _isEditing = false;
 
+  // Current seller data (updated after successful saves)
+  late Map<String, dynamic> _currentSellerData;
+
+  // Audit trail (in-memory for now)
+  final List<Map<String, dynamic>> _auditTrail = [];
+
   @override
   void initState() {
     super.initState();
+    _currentSellerData = Map<String, dynamic>.from(widget.seller);
     _initializeControllers();
   }
 
   void _initializeControllers() {
     _sellerNameController = TextEditingController(
-      text: widget.seller['seller_name'] ?? '',
+      text: _currentSellerData['seller_name'] ?? '',
     );
     _contactPhoneController = TextEditingController(
-      text: widget.seller['contact_phone'] ?? '',
+      text: _currentSellerData['contact_phone'] ?? '',
     );
     _businessCityController = TextEditingController(
-      text: widget.seller['business_city'] ?? '',
+      text: _currentSellerData['business_city'] ?? '',
     );
     _businessAddressController = TextEditingController(
-      text: widget.seller['business_address'] ?? '',
+      text: _currentSellerData['business_address'] ?? '',
     );
     _businessPincodeController = TextEditingController(
-      text: widget.seller['business_pincode'] ?? '',
+      text: _currentSellerData['business_pincode'] ?? '',
     );
     _gstinController = TextEditingController(
-      text: widget.seller['gstin'] ?? '',
+      text: _currentSellerData['gstin'] ?? '',
     );
     _fssaiLicenseController = TextEditingController(
-      text: widget.seller['fssai_license'] ?? '',
+      text: _currentSellerData['fssai_license'] ?? '',
     );
     _bankAccountController = TextEditingController(
-      text: widget.seller['bank_account_number'] ?? '',
+      text: _currentSellerData['bank_account_number'] ?? '',
     );
     _ifscCodeController = TextEditingController(
-      text: widget.seller['ifsc_code'] ?? '',
+      text: _currentSellerData['ifsc_code'] ?? '',
     );
     _accountHolderController = TextEditingController(
-      text: widget.seller['account_holder_name'] ?? '',
+      text: _currentSellerData['account_holder_name'] ?? '',
     );
     _aadhaarController = TextEditingController(
-      text: widget.seller['aadhaar_number'] ?? '',
+      text: _currentSellerData['aadhaar_number'] ?? '',
     );
 
     // Initialize notification preferences
-    _emailNotifications = widget.seller['notification_email'] ?? true;
-    _smsNotifications = widget.seller['notification_sms'] ?? true;
-    _pushNotifications = widget.seller['notification_push'] ?? false;
+    _emailNotifications = _currentSellerData['notification_email'] ?? true;
+    _smsNotifications = _currentSellerData['notification_sms'] ?? true;
+    _pushNotifications = _currentSellerData['notification_push'] ?? false;
   }
 
   @override
@@ -249,17 +256,12 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
 
               // Personal Information Section
               _buildSectionHeader('Personal Information'),
-              _buildTextField(
-                controller: _sellerNameController,
+              _buildCriticalField(
                 label: 'Seller Name *',
+                value: _currentSellerData['seller_name'] ?? 'Not Set',
                 icon: Icons.person,
-                enabled: _isEditing,
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Seller name is required';
-                  }
-                  return null;
-                },
+                restrictionMessage:
+                    'Please contact Admin for Seller Name Change',
               ),
               const SizedBox(height: 16),
 
@@ -298,12 +300,16 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
 
               // Business Details Section
               _buildSectionHeader('Business Details'),
-              _buildReadOnlyField(
+              _buildCriticalField(
                 label: 'Seller Type',
                 value:
-                    widget.seller['seller_type']?.toString().toUpperCase() ??
+                    _currentSellerData['seller_type']
+                        ?.toString()
+                        .toUpperCase() ??
                     'NOT SET',
                 icon: Icons.category,
+                restrictionMessage:
+                    'Please contact Admin for Seller Type Change',
               ),
               const SizedBox(height: 16),
 
@@ -446,12 +452,12 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
               _buildReadOnlyField(
                 label: 'Approval Status',
                 value:
-                    widget.seller['approval_status']
+                    _currentSellerData['approval_status']
                         ?.toString()
                         .toUpperCase() ??
                     'PENDING',
                 icon: Icons.verified_user,
-                valueColor: widget.seller['approval_status'] == 'approved'
+                valueColor: _currentSellerData['approval_status'] == 'approved'
                     ? Colors.green[700]
                     : Colors.orange[700],
               ),
@@ -459,7 +465,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
 
               _buildReadOnlyField(
                 label: 'Member Since',
-                value: _formatDate(widget.seller['created_at']),
+                value: _formatDate(_currentSellerData['created_at']),
                 icon: Icons.calendar_today,
               ),
               const SizedBox(height: 24),
@@ -599,66 +605,191 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
     });
 
     try {
-      // Prepare updated data with all profile fields
-      final updatedData = {
-        // Personal Information
-        'seller_name': _sellerNameController.text.trim(),
-        'contact_phone': _contactPhoneController.text.trim(),
-        'aadhaar_number': _aadhaarController.text.trim().isEmpty
-            ? null
-            : _aadhaarController.text.trim(),
+      // Track changes for audit trail
+      final changes = <String, Map<String, dynamic>>{};
 
-        // Business Details
-        'business_address': _businessAddressController.text.trim().isEmpty
-            ? null
-            : _businessAddressController.text.trim(),
-        'business_city': _businessCityController.text.trim().isEmpty
-            ? null
-            : _businessCityController.text.trim(),
-        'business_pincode': _businessPincodeController.text.trim().isEmpty
-            ? null
-            : _businessPincodeController.text.trim(),
+      // Check each field for changes and prepare update data
+      final updatedData = <String, dynamic>{};
 
-        // Licenses & Compliance
-        'gstin': _gstinController.text.trim().isEmpty
-            ? null
-            : _gstinController.text.trim(),
-        'fssai_license': _fssaiLicenseController.text.trim().isEmpty
-            ? null
-            : _fssaiLicenseController.text.trim(),
+      // Personal Information (contact_phone only - seller_name is restricted)
+      if (_contactPhoneController.text.trim() !=
+          (_currentSellerData['contact_phone'] ?? '')) {
+        final oldValue = _currentSellerData['contact_phone'];
+        final newValue = _contactPhoneController.text.trim();
+        changes['contact_phone'] = {'old': oldValue, 'new': newValue};
+        updatedData['contact_phone'] = newValue;
+      }
 
-        // Banking Information
-        'bank_account_number': _bankAccountController.text.trim().isEmpty
+      if (_aadhaarController.text.trim() !=
+          (_currentSellerData['aadhaar_number'] ?? '')) {
+        final oldValue = _currentSellerData['aadhaar_number'];
+        final newValue = _aadhaarController.text.trim().isEmpty
             ? null
-            : _bankAccountController.text.trim(),
-        'ifsc_code': _ifscCodeController.text.trim().isEmpty
-            ? null
-            : _ifscCodeController.text.trim(),
-        'account_holder_name': _accountHolderController.text.trim().isEmpty
-            ? null
-            : _accountHolderController.text.trim(),
+            : _aadhaarController.text.trim();
+        changes['aadhaar_number'] = {'old': oldValue, 'new': newValue};
+        updatedData['aadhaar_number'] = newValue;
+      }
 
-        // Notification Preferences
-        'notification_email': _emailNotifications,
-        'notification_sms': _smsNotifications,
-        'notification_push': _pushNotifications,
+      // Business Details
+      if (_businessAddressController.text.trim() !=
+          (_currentSellerData['business_address'] ?? '')) {
+        final oldValue = _currentSellerData['business_address'];
+        final newValue = _businessAddressController.text.trim().isEmpty
+            ? null
+            : _businessAddressController.text.trim();
+        changes['business_address'] = {'old': oldValue, 'new': newValue};
+        updatedData['business_address'] = newValue;
+      }
 
-        // Audit
-        'updated_at': DateTime.now().toIso8601String(),
-      };
+      if (_businessCityController.text.trim() !=
+          (_currentSellerData['business_city'] ?? '')) {
+        final oldValue = _currentSellerData['business_city'];
+        final newValue = _businessCityController.text.trim().isEmpty
+            ? null
+            : _businessCityController.text.trim();
+        changes['business_city'] = {'old': oldValue, 'new': newValue};
+        updatedData['business_city'] = newValue;
+      }
+
+      if (_businessPincodeController.text.trim() !=
+          (_currentSellerData['business_pincode'] ?? '')) {
+        final oldValue = _currentSellerData['business_pincode'];
+        final newValue = _businessPincodeController.text.trim().isEmpty
+            ? null
+            : _businessPincodeController.text.trim();
+        changes['business_pincode'] = {'old': oldValue, 'new': newValue};
+        updatedData['business_pincode'] = newValue;
+      }
+
+      // Licenses & Compliance
+      if (_gstinController.text.trim() != (_currentSellerData['gstin'] ?? '')) {
+        final oldValue = _currentSellerData['gstin'];
+        final newValue = _gstinController.text.trim().isEmpty
+            ? null
+            : _gstinController.text.trim();
+        changes['gstin'] = {'old': oldValue, 'new': newValue};
+        updatedData['gstin'] = newValue;
+      }
+
+      if (_fssaiLicenseController.text.trim() !=
+          (_currentSellerData['fssai_license'] ?? '')) {
+        final oldValue = _currentSellerData['fssai_license'];
+        final newValue = _fssaiLicenseController.text.trim().isEmpty
+            ? null
+            : _fssaiLicenseController.text.trim();
+        changes['fssai_license'] = {'old': oldValue, 'new': newValue};
+        updatedData['fssai_license'] = newValue;
+      }
+
+      // Banking Information
+      if (_bankAccountController.text.trim() !=
+          (_currentSellerData['bank_account_number'] ?? '')) {
+        final oldValue = _currentSellerData['bank_account_number'];
+        final newValue = _bankAccountController.text.trim().isEmpty
+            ? null
+            : _bankAccountController.text.trim();
+        changes['bank_account_number'] = {'old': oldValue, 'new': newValue};
+        updatedData['bank_account_number'] = newValue;
+      }
+
+      if (_ifscCodeController.text.trim() !=
+          (_currentSellerData['ifsc_code'] ?? '')) {
+        final oldValue = _currentSellerData['ifsc_code'];
+        final newValue = _ifscCodeController.text.trim().isEmpty
+            ? null
+            : _ifscCodeController.text.trim();
+        changes['ifsc_code'] = {'old': oldValue, 'new': newValue};
+        updatedData['ifsc_code'] = newValue;
+      }
+
+      if (_accountHolderController.text.trim() !=
+          (_currentSellerData['account_holder_name'] ?? '')) {
+        final oldValue = _currentSellerData['account_holder_name'];
+        final newValue = _accountHolderController.text.trim().isEmpty
+            ? null
+            : _accountHolderController.text.trim();
+        changes['account_holder_name'] = {'old': oldValue, 'new': newValue};
+        updatedData['account_holder_name'] = newValue;
+      }
+
+      // Notification Preferences
+      if (_emailNotifications !=
+          (_currentSellerData['notification_email'] ?? true)) {
+        final oldValue = _currentSellerData['notification_email'];
+        final newValue = _emailNotifications;
+        changes['notification_email'] = {'old': oldValue, 'new': newValue};
+        updatedData['notification_email'] = newValue;
+      }
+
+      if (_smsNotifications !=
+          (_currentSellerData['notification_sms'] ?? true)) {
+        final oldValue = _currentSellerData['notification_sms'];
+        final newValue = _smsNotifications;
+        changes['notification_sms'] = {'old': oldValue, 'new': newValue};
+        updatedData['notification_sms'] = newValue;
+      }
+
+      if (_pushNotifications !=
+          (_currentSellerData['notification_push'] ?? false)) {
+        final oldValue = _currentSellerData['notification_push'];
+        final newValue = _pushNotifications;
+        changes['notification_push'] = {'old': oldValue, 'new': newValue};
+        updatedData['notification_push'] = newValue;
+      }
+
+      // If no changes, show message and return
+      if (updatedData.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No changes to save'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        setState(() {
+          _isEditing = false;
+        });
+        return;
+      }
+
+      // Add audit timestamp
+      updatedData['updated_at'] = DateTime.now().toIso8601String();
 
       // Update seller in Supabase
       final result = await _supabaseService.updateSeller(
-        widget.seller['id'],
+        _currentSellerData['id'],
         updatedData,
       );
 
       if (mounted) {
         if (result['success']) {
+          // Update current seller data with new values
+          _currentSellerData.addAll(updatedData);
+
+          // Add to audit trail (in-memory for now)
+          for (final fieldName in changes.keys) {
+            _auditTrail.add({
+              'seller_id': _currentSellerData['id'],
+              'field_name': fieldName,
+              'old_value': changes[fieldName]!['old']?.toString(),
+              'new_value': changes[fieldName]!['new']?.toString(),
+              'changed_at': DateTime.now().toIso8601String(),
+              'changed_by': 'seller_self', // Self-service change
+            });
+          }
+
+          print('🔍 AUDIT TRAIL - ${changes.length} changes recorded:');
+          for (final change in changes.entries) {
+            print(
+              '  • ${change.key}: "${change.value['old']}" → "${change.value['new']}"',
+            );
+          }
+
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Profile updated successfully!'),
-              backgroundColor: Color(0xFF059669),
+            SnackBar(
+              content: Text(
+                'Profile updated successfully! (${changes.length} changes)',
+              ),
+              backgroundColor: const Color(0xFF059669),
             ),
           );
 
@@ -803,6 +934,83 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
         activeColor: const Color(0xFF059669),
         activeTrackColor: const Color(0xFF059669).withValues(alpha: 0.3),
       ),
+    );
+  }
+
+  /// Build critical field with restriction message
+  Widget _buildCriticalField({
+    required String label,
+    required String value,
+    required IconData icon,
+    required String restrictionMessage,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.red[50],
+            border: Border.all(color: Colors.red[200]!),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(icon, color: Colors.red[600], size: 20),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      value,
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.red[800],
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  Icon(Icons.lock, color: Colors.red[600], size: 16),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.red[100],
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.info_outline, size: 14, color: Colors.red[700]),
+                    const SizedBox(width: 4),
+                    Text(
+                      restrictionMessage,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.red[700],
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
