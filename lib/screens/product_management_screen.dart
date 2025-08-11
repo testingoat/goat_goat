@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../supabase_service.dart';
 import '../services/odoo_service.dart';
+import '../config/ui_flags.dart';
+import '../widgets/product_image_picker_panel.dart';
 import '../services/odoo_status_sync_service.dart';
 import '../widgets/product_filter_widget.dart';
 
@@ -1176,6 +1178,7 @@ class AddProductDialog extends StatefulWidget {
 }
 
 class _AddProductDialogState extends State<AddProductDialog> {
+  List<String> _pendingImageUrls = [];
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _priceController = TextEditingController();
@@ -1297,7 +1300,17 @@ class _AddProductDialogState extends State<AddProductDialog> {
                         maxLines: 4,
                       ),
                       const SizedBox(height: 16),
-                      _buildImageUploadSection(),
+                      // Feature-flagged image picker (zero-risk, UI-only)
+                      if (UiFlags.enableSellerProductImages)
+                        ProductImagePickerPanel(
+                          sellerId: widget.seller['id'] as String,
+                          onChanged: (urls) {
+                            // Stored locally; will be passed to createProduct below
+                            _pendingImageUrls = urls;
+                          },
+                        )
+                      else
+                        _buildImageUploadSection(),
                     ],
                   ),
                 ),
@@ -1508,6 +1521,7 @@ class _AddProductDialogState extends State<AddProductDialog> {
         description: _descriptionController.text.trim().isEmpty
             ? null
             : _descriptionController.text.trim(),
+        imageUrls: UiFlags.enableSellerProductImages ? _pendingImageUrls : null,
       );
 
       if (mounted) {

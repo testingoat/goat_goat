@@ -71,6 +71,8 @@ dependencies:
 
   # Modern animated navigation bar
   google_nav_bar: ^5.0.7
+  image_picker: ^1.1.2
+  path: ^1.9.1
 
 dev_dependencies:
   flutter_test:

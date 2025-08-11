@@ -31,4 +31,10 @@ class UiFlags {
   static const bool compactLocationHeaderEnabled = true;
   static const bool categoryShortcutsEnabled = true;
   static const bool enableScrollCollapse = false;
+
+  // New: optional cart polish (visual only, zero-risk)
+  static const bool enableCartPolish = true;
+
+  // New: optional seller product images panel (UI only)
+  static const bool enableSellerProductImages = true;
 }

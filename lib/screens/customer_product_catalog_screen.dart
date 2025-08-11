@@ -532,8 +532,9 @@ class _CustomerProductCatalogScreenState
                       duration: const Duration(milliseconds: 200),
                       height: 80, // reduced height
                       decoration: BoxDecoration(
-                        color: const Color(0xFF059669)
-                            .withValues(alpha: isHovered ? 0.15 : 0.1),
+                        color: const Color(
+                          0xFF059669,
+                        ).withValues(alpha: isHovered ? 0.15 : 0.1),
                         borderRadius: const BorderRadius.only(
                           topLeft: Radius.circular(12),
                           topRight: Radius.circular(12),
@@ -543,11 +544,7 @@ class _CustomerProductCatalogScreenState
                         child: AnimatedScale(
                           scale: isHovered ? 1.1 : 1.0,
                           duration: const Duration(milliseconds: 200),
-                          child: const Icon(
-                            Icons.fastfood,
-                            size: 36,
-                            color: Color(0xFF059669),
-                          ),
+                          child: _buildProductImage(product),
                         ),
                       ),
                     ),
@@ -617,8 +614,9 @@ class _CustomerProductCatalogScreenState
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(8),
                                 ),
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 6),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 6,
+                                ),
                                 elevation: 0,
                               ),
                               child: const Text(
@@ -742,8 +740,10 @@ class _CustomerProductCatalogScreenState
           const end = Offset.zero;
           const curve = Curves.easeInOutCubic;
 
-          var tween = Tween(begin: begin, end: end)
-              .chain(CurveTween(curve: curve));
+          var tween = Tween(
+            begin: begin,
+            end: end,
+          ).chain(CurveTween(curve: curve));
           return SlideTransition(
             position: animation.drive(tween),
             child: child,
@@ -888,6 +888,51 @@ class _CustomerProductCatalogScreenState
       _updateNotificationCount();
     });
   }
+
+  /// Build product image with fallback to icon
+  Widget _buildProductImage(Map<String, dynamic> product) {
+    final productImages = product['meat_product_images'] as List? ?? [];
+
+    if (productImages.isNotEmpty) {
+      final imageUrl = productImages[0]['image_url'] as String?;
+      if (imageUrl != null && imageUrl.isNotEmpty) {
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: Container(
+            color: Colors.grey[100], // Neutral background for letterboxing
+            child: Image.network(
+              imageUrl,
+              width: double.infinity,
+              height: double.infinity,
+              fit: BoxFit.contain, // Show complete product, allow letterboxing
+              alignment: Alignment.center, // Center the image
+              errorBuilder: (context, error, stackTrace) {
+                return const Icon(
+                  Icons.fastfood,
+                  size: 36,
+                  color: Color(0xFF059669),
+                );
+              },
+              loadingBuilder: (context, child, loadingProgress) {
+                if (loadingProgress == null) return child;
+                return Container(
+                  color: Colors.grey[100],
+                  child: const Icon(
+                    Icons.fastfood,
+                    size: 36,
+                    color: Color(0xFF059669),
+                  ),
+                );
+              },
+            ),
+          ),
+        );
+      }
+    }
+
+    // Fallback icon for products without images
+    return const Icon(Icons.fastfood, size: 36, color: Color(0xFF059669));
+  }
 }
 
 // Separate widget: Private slot to render the title bar delivery status chip
@@ -973,7 +1018,9 @@ class _TitleBarChipSlotState extends State<_TitleBarChipSlot> {
           // Here we simply show a scaffold message to keep zero-risk.
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Tap location: open address picker/manage addresses'),
+              content: Text(
+                'Tap location: open address picker/manage addresses',
+              ),
               duration: Duration(milliseconds: 900),
             ),
           );

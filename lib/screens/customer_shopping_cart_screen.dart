@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../services/shopping_cart_service.dart';
 import '../supabase_service.dart';
 import '../config/feature_flags.dart';
+import '../config/ui_flags.dart';
 import '../services/delivery_address_state.dart';
 import '../services/delivery_error_notification_service.dart';
 import '../widgets/address_picker.dart';
@@ -17,6 +18,19 @@ import 'customer_checkout_screen.dart';
 /// - View all cart items with product details
 /// - Update item quantities or remove items
 /// - Cart summary with totals
+
+class _NoGlowBehavior extends ScrollBehavior {
+  const _NoGlowBehavior();
+  @override
+  Widget buildOverscrollIndicator(
+    BuildContext context,
+    Widget child,
+    ScrollableDetails details,
+  ) {
+    return child;
+  }
+}
+
 /// - Checkout functionality (placeholder for future payment integration)
 /// - Follows existing emerald theme and design patterns
 class CustomerShoppingCartScreen extends StatefulWidget {
@@ -295,14 +309,24 @@ class _CustomerShoppingCartScreenState
     return RefreshIndicator(
       onRefresh: _loadCartItems,
       color: Colors.green[600],
-      child: Column(
-        children: [
-          // Cart items list
-          Expanded(child: _buildCartItemsList()),
+      child: ScrollConfiguration(
+        behavior: const _NoGlowBehavior(),
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Cart items list
+              _buildCartItemsList(shrinkWrap: true, disableScroll: true),
 
-          // Cart summary at bottom
-          if (_cartSummary != null) _buildCartSummary(),
-        ],
+              // Cart summary at bottom
+              if (_cartSummary != null) _buildCartSummary(),
+
+              // Spacer to avoid bottom bar overlap when scrolling
+              const SizedBox(height: 24),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -470,21 +494,27 @@ class _CustomerShoppingCartScreenState
         Container(
           margin: const EdgeInsets.fromLTRB(16, 8, 16, 16),
           padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.green[600]!, Colors.green[500]!],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.green[200]!.withValues(alpha: 0.3),
-                blurRadius: 8,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
+          constraints: const BoxConstraints(maxWidth: 700),
+          decoration: UiFlags.enableCartPolish
+              ? BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.green[600]!, Colors.green[500]!],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.green[200]!.withValues(alpha: 0.3),
+                      blurRadius: 12,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                )
+              : BoxDecoration(
+                  color: Colors.green[600],
+                  borderRadius: BorderRadius.circular(16),
+                ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -697,9 +727,16 @@ class _CustomerShoppingCartScreenState
   }
 
   /// Build cart items list
-  Widget _buildCartItemsList() {
+  Widget _buildCartItemsList({
+    bool shrinkWrap = false,
+    bool disableScroll = false,
+  }) {
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16),
+      shrinkWrap: shrinkWrap,
+      physics: disableScroll
+          ? const NeverScrollableScrollPhysics()
+          : const ClampingScrollPhysics(),
       itemCount: _cartItems.length,
       itemBuilder: (context, index) {
         final item = _cartItems[index];
@@ -722,7 +759,7 @@ class _CustomerShoppingCartScreenState
         : null;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: UiFlags.enableCartPolish ? 8 : 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -860,7 +897,7 @@ class _CustomerShoppingCartScreenState
         boxShadow: [
           BoxShadow(
             color: Colors.grey[300]!,
-            blurRadius: 4,
+            blurRadius: UiFlags.enableCartPolish ? 10 : 4,
             offset: const Offset(0, -2),
           ),
         ],

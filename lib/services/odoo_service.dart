@@ -131,9 +131,9 @@ class OdooService {
         final imageData = imageUrls
             .map(
               (url) => {
-                'product_id': localProduct['id'],
+                'meat_product_id': localProduct['id'],
                 'image_url': url,
-                'is_primary': imageUrls.indexOf(url) == 0,
+                'display_order': imageUrls.indexOf(url),
               },
             )
             .toList();

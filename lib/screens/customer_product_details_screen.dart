@@ -3,7 +3,7 @@ import '../widgets/product_review_widget.dart';
 import '../services/shopping_cart_service.dart';
 import 'customer_product_reviews_screen.dart';
 
-class CustomerProductDetailsScreen extends StatelessWidget {
+class CustomerProductDetailsScreen extends StatefulWidget {
   final Map<String, dynamic> product;
   final Map<String, dynamic> customer;
 
@@ -13,14 +13,24 @@ class CustomerProductDetailsScreen extends StatelessWidget {
     required this.customer,
   });
 
+  @override
+  State<CustomerProductDetailsScreen> createState() =>
+      _CustomerProductDetailsScreenState();
+}
+
+class _CustomerProductDetailsScreenState
+    extends State<CustomerProductDetailsScreen> {
+  int _currentImageIndex = 0;
+  final PageController _pageController = PageController();
+
   Color get primaryColor => const Color(0xFF059669);
 
   @override
   Widget build(BuildContext context) {
-    final sellerName = product['sellers']?['seller_name'] as String?;
-    final productName = (product['name'] ?? 'Product').toString();
-    final price = product['price'];
-    final unit = _readUnit(product) ?? 'kg';
+    final sellerName = widget.product['sellers']?['seller_name'] as String?;
+    final productName = (widget.product['name'] ?? 'Product').toString();
+    final price = widget.product['price'];
+    final unit = _readUnit(widget.product) ?? 'kg';
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -36,7 +46,10 @@ class CustomerProductDetailsScreen extends StatelessWidget {
           productName,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w700,
+          ),
         ),
         actions: [
           IconButton(
@@ -55,7 +68,10 @@ class CustomerProductDetailsScreen extends StatelessWidget {
               children: [
                 _buildHeroHeader(),
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 12,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -64,19 +80,37 @@ class CustomerProductDetailsScreen extends StatelessWidget {
                           children: [
                             _SellerChipView(label: sellerName),
                             const SizedBox(width: 8),
-                            Text('Seller', style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+                            Text(
+                              'Seller',
+                              style: TextStyle(
+                                color: Colors.grey.shade600,
+                                fontSize: 12,
+                              ),
+                            ),
                           ],
                         ),
-                      if (sellerName != null && sellerName.isNotEmpty) const SizedBox(height: 12),
+                      if (sellerName != null && sellerName.isNotEmpty)
+                        const SizedBox(height: 12),
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           Text(
                             _formatPrice(price, unit),
-                            style: TextStyle(color: primaryColor, fontSize: 22, fontWeight: FontWeight.w700, letterSpacing: 0.2),
+                            style: TextStyle(
+                              color: primaryColor,
+                              fontSize: 22,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.2,
+                            ),
                           ),
                           const SizedBox(width: 8),
-                          Text('(inclusive of all taxes)', style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+                          Text(
+                            '(inclusive of all taxes)',
+                            style: TextStyle(
+                              color: Colors.grey.shade600,
+                              fontSize: 12,
+                            ),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 12),
@@ -91,18 +125,31 @@ class CustomerProductDetailsScreen extends StatelessWidget {
                           children: [
                             Expanded(
                               child: ProductReviewSummary(
-                                productId: product['id'],
+                                productId: widget.product['id'],
                                 showFullStats: false,
                               ),
                             ),
                             const SizedBox(width: 8),
                             TextButton.icon(
                               onPressed: () => _openReviews(context),
-                              icon: Icon(Icons.chevron_right, color: primaryColor, size: 18),
-                              label: Text('View Reviews', style: TextStyle(color: primaryColor, fontWeight: FontWeight.w600)),
+                              icon: Icon(
+                                Icons.chevron_right,
+                                color: primaryColor,
+                                size: 18,
+                              ),
+                              label: Text(
+                                'View Reviews',
+                                style: TextStyle(
+                                  color: primaryColor,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                               style: TextButton.styleFrom(
                                 foregroundColor: primaryColor,
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 8,
+                                ),
                               ),
                             ),
                           ],
@@ -127,7 +174,11 @@ class CustomerProductDetailsScreen extends StatelessWidget {
               decoration: BoxDecoration(
                 color: Colors.white,
                 boxShadow: [
-                  BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 10, offset: const Offset(0, -2)),
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.06),
+                    blurRadius: 10,
+                    offset: const Offset(0, -2),
+                  ),
                 ],
               ),
               child: Row(
@@ -137,7 +188,11 @@ class CustomerProductDetailsScreen extends StatelessWidget {
                       _formatPrice(price, unit),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: primaryColor, fontSize: 18, fontWeight: FontWeight.w700),
+                      style: TextStyle(
+                        color: primaryColor,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -148,10 +203,18 @@ class CustomerProductDetailsScreen extends StatelessWidget {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: primaryColor,
                         foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                         padding: const EdgeInsets.symmetric(horizontal: 18),
                       ),
-                      child: const Text('Add to Cart', style: TextStyle(fontWeight: FontWeight.w700, letterSpacing: 0.2)),
+                      child: const Text(
+                        'Add to Cart',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -168,16 +231,23 @@ class CustomerProductDetailsScreen extends StatelessWidget {
     Navigator.push(
       context,
       PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) => CustomerProductReviewsScreen(
-          product: product,
-          customer: customer,
-        ),
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            CustomerProductReviewsScreen(
+              product: widget.product,
+              customer: widget.customer,
+            ),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           const begin = Offset(1.0, 0.0);
           const end = Offset.zero;
           const curve = Curves.easeInOutCubic;
-          final tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-          return SlideTransition(position: animation.drive(tween), child: child);
+          final tween = Tween(
+            begin: begin,
+            end: end,
+          ).chain(CurveTween(curve: curve));
+          return SlideTransition(
+            position: animation.drive(tween),
+            child: child,
+          );
         },
         transitionDuration: const Duration(milliseconds: 300),
       ),
@@ -189,26 +259,32 @@ class CustomerProductDetailsScreen extends StatelessWidget {
     try {
       final service = ShoppingCartService();
       final result = await service.addToCart(
-        customerId: customer['id'],
-        productId: product['id'],
+        customerId: widget.customer['id'],
+        productId: widget.product['id'],
         quantity: 1,
-        unitPrice: (product['price'] as num).toDouble(),
+        unitPrice: (widget.product['price'] as num).toDouble(),
       );
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(result['message'] ?? 'Added to cart'),
-          backgroundColor: result['success'] == true ? primaryColor : Colors.red,
-          duration: const Duration(seconds: 2),
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message'] ?? 'Added to cart'),
+            backgroundColor: result['success'] == true
+                ? primaryColor
+                : Colors.red,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: $e'),
-          backgroundColor: Colors.red,
-          duration: const Duration(seconds: 2),
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
     }
   }
 
@@ -219,34 +295,166 @@ class CustomerProductDetailsScreen extends StatelessWidget {
       child: Column(
         children: [
           const SizedBox(height: 16),
-          Container(
-            height: 220,
-            margin: const EdgeInsets.symmetric(horizontal: 16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 12, offset: const Offset(0, 4))],
-            ),
-            child: const Center(child: Icon(Icons.fastfood, size: 96, color: Color(0xFF059669))),
-          ),
-          const SizedBox(height: 12),
-          Row(mainAxisAlignment: MainAxisAlignment.center, children: [_DotView(active: true, color: primaryColor)]),
+          _buildImageCarousel(),
           const SizedBox(height: 8),
         ],
       ),
     );
   }
 
+  /// Build image carousel with multiple image support
+  Widget _buildImageCarousel() {
+    final productImages = widget.product['meat_product_images'] as List? ?? [];
+
+    if (productImages.isEmpty) {
+      // Fallback to placeholder when no images
+      return Container(
+        height: 220,
+        margin: const EdgeInsets.symmetric(horizontal: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            color: Colors.grey[100], // Consistent neutral background
+            child: const Center(
+              child: Icon(Icons.fastfood, size: 96, color: Color(0xFF059669)),
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Single image or multiple images
+    return Column(
+      children: [
+        Container(
+          height: 220,
+          margin: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.06),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              color: Colors.grey[100], // Neutral background for letterboxing
+              child: PageView.builder(
+                controller: _pageController,
+                itemCount: productImages.length,
+                onPageChanged: (index) {
+                  setState(() {
+                    _currentImageIndex = index;
+                  });
+                },
+                itemBuilder: (context, index) {
+                  final imageUrl = productImages[index]['image_url'] as String?;
+                  if (imageUrl == null || imageUrl.isEmpty) {
+                    return const Center(
+                      child: Icon(
+                        Icons.fastfood,
+                        size: 96,
+                        color: Color(0xFF059669),
+                      ),
+                    );
+                  }
+
+                  return Image.network(
+                    imageUrl,
+                    fit: BoxFit
+                        .contain, // Show complete image, allow letterboxing
+                    alignment: Alignment.center, // Center the image
+                    width: double.infinity,
+                    height: double.infinity,
+                    errorBuilder: (context, error, stackTrace) {
+                      return const Center(
+                        child: Icon(
+                          Icons.fastfood,
+                          size: 96,
+                          color: Color(0xFF059669),
+                        ),
+                      );
+                    },
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return Container(
+                        color: Colors.grey[100],
+                        child: const Center(
+                          child: CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Color(0xFF059669),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        // Dots indicator for multiple images
+        if (productImages.length > 1)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(
+              productImages.length,
+              (index) => Container(
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: index == _currentImageIndex
+                      ? primaryColor
+                      : Colors.grey[300],
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
+          )
+        else
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [_DotView(active: true, color: primaryColor)],
+          ),
+      ],
+    );
+  }
+
   Widget _buildHighlightsIfAny() {
     final chips = <String>[];
-    if (product['category'] != null) chips.add(product['category'].toString());
-    if (product['type'] != null) chips.add(product['type'].toString());
-    if (product['cut'] != null) chips.add(product['cut'].toString());
+    if (widget.product['category'] != null)
+      chips.add(widget.product['category'].toString());
+    if (widget.product['type'] != null)
+      chips.add(widget.product['type'].toString());
+    if (widget.product['cut'] != null)
+      chips.add(widget.product['cut'].toString());
     if (chips.isEmpty) return const SizedBox.shrink();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Highlights', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+        const Text(
+          'Highlights',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+        ),
         const SizedBox(height: 8),
         Wrap(
           spacing: 8,
@@ -254,13 +462,22 @@ class CustomerProductDetailsScreen extends StatelessWidget {
           children: chips
               .map(
                 (c) => Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.grey.shade100,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: Colors.grey.shade300),
                   ),
-                  child: Text(c, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                  child: Text(
+                    c,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
               )
               .toList(),
@@ -273,22 +490,30 @@ class CustomerProductDetailsScreen extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Product Details', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+        const Text(
+          'Product Details',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+        ),
         const SizedBox(height: 8),
         _DetailRowView(label: 'Unit', value: unit),
-        if (product['description'] != null) ...[
+        if (widget.product['description'] != null) ...[
           const SizedBox(height: 6),
-          _DetailRowView(label: 'Description', value: product['description'].toString()),
+          _DetailRowView(
+            label: 'Description',
+            value: widget.product['description'].toString(),
+          ),
         ],
       ],
     );
   }
-  
+
   String _formatPrice(dynamic price, String unit) {
-    final p = (price is num) ? price.toDouble() : double.tryParse(price?.toString() ?? '0') ?? 0.0;
+    final p = (price is num)
+        ? price.toDouble()
+        : double.tryParse(price?.toString() ?? '0') ?? 0.0;
     return '₹${p.toStringAsFixed(p.truncateToDouble() == p ? 0 : 1)}/$unit';
   }
- 
+
   String? _readUnit(Map<String, dynamic> prod) {
     if (prod['unit'] is String && (prod['unit'] as String).isNotEmpty) {
       return prod['unit'];
@@ -296,12 +521,12 @@ class CustomerProductDetailsScreen extends StatelessWidget {
     return 'kg';
   }
 }
- 
+
 // Helper widgets must be top-level (outside of the CustomerProductDetailsScreen class).
 class _SellerChipView extends StatelessWidget {
   final String label;
   const _SellerChipView({super.key, required this.label});
- 
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -321,42 +546,59 @@ class _SellerChipView extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.store_mall_directory, size: 14, color: Color(0xFF059669)),
+          const Icon(
+            Icons.store_mall_directory,
+            size: 14,
+            color: Color(0xFF059669),
+          ),
           const SizedBox(width: 6),
-          Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+          ),
         ],
       ),
     );
   }
 }
- 
+
 class _DetailRowView extends StatelessWidget {
   final String label;
   final String value;
   const _DetailRowView({super.key, required this.label, required this.value});
- 
+
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
         SizedBox(
           width: 90,
-          child: Text(label, style: TextStyle(color: Colors.grey.shade600, fontSize: 13, fontWeight: FontWeight.w600)),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: Colors.grey.shade600,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ),
         const SizedBox(width: 8),
         Expanded(
-          child: Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+          child: Text(
+            value,
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+          ),
         ),
       ],
     );
   }
 }
- 
+
 class _DotView extends StatelessWidget {
   final bool active;
   final Color color;
   const _DotView({super.key, required this.active, required this.color});
- 
+
   @override
   Widget build(BuildContext context) {
     return AnimatedContainer(

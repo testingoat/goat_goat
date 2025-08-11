@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_nav_bar/google_nav_bar.dart';
 import '../config/ui_flags.dart';
 import '../services/shopping_cart_service.dart';
+import '../services/auth_service.dart';
+import '../supabase_service.dart';
 import '../widgets/category_shortcut_row.dart';
 import 'customer_product_catalog_screen.dart';
 import 'customer_shopping_cart_screen.dart';
@@ -370,11 +372,22 @@ class _AccountHubScreen extends StatelessWidget {
                       child: const Text('Cancel'),
                     ),
                     TextButton(
-                      onPressed: () {
+                      onPressed: () async {
+                        final navigator = Navigator.of(context);
                         Navigator.pop(context);
-                        Navigator.of(
-                          context,
-                        ).pushNamedAndRemoveUntil('/', (route) => false);
+                        // Clear session safely and navigate to main landing
+                        try {
+                          final auth = AuthService();
+                          await auth.clearSession();
+                          await SupabaseService().signOut();
+                        } catch (_) {
+                          // Swallow errors to avoid blocking logout UI
+                        } finally {
+                          navigator.pushNamedAndRemoveUntil(
+                            '/',
+                            (route) => false,
+                          );
+                        }
                       },
                       style: TextButton.styleFrom(foregroundColor: Colors.red),
                       child: const Text('Logout'),
