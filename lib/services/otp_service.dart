@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'seller_sync_service.dart';
 
 class OTPService {
   static final OTPService _instance = OTPService._internal();
@@ -7,6 +8,7 @@ class OTPService {
   OTPService._internal();
 
   final SupabaseClient _supabase = Supabase.instance.client;
+  final SellerSyncService _sellerSyncService = SellerSyncService();
 
   // Temporary storage for OTPs (in production, this should be in database)
   final Map<String, Map<String, dynamic>> _otpStorage = {};
@@ -160,6 +162,22 @@ class OTPService {
           .insert(sellerData)
           .select()
           .single();
+
+      // Sync seller to Odoo for approval (non-blocking)
+      try {
+        print('🔄 Syncing seller to Odoo for approval...');
+        final syncResult = await _sellerSyncService.syncSellerToOdoo(response);
+
+        if (syncResult['success']) {
+          print('✅ Seller synced to Odoo successfully');
+        } else {
+          print('⚠️ Seller sync to Odoo failed: ${syncResult['error']}');
+          // Don't fail registration if Odoo sync fails
+        }
+      } catch (syncError) {
+        print('⚠️ Seller sync error: $syncError');
+        // Don't fail registration if sync fails
+      }
 
       return {
         'success': true,

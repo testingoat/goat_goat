@@ -1,0 +1,4 @@
+TestSprite MCP \& API Key
+
+sk-user-q\_oIF80kq1ofxe7J\_5FsgCIdbVpHpXr5psBAefzY7YkVZNNkwQ2Czw15MdxKwG3vt4DUEeU415XIhStzr87V4u3u9F9V1orAxU0dsUpb32\_5HmDoRX9488ieIVsf1fCHcBs
+

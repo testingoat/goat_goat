@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../supabase_service.dart';
+import '../services/seller_location_service.dart';
+import '../services/seller_image_service.dart';
+import '../widgets/seller_location_picker.dart';
+import '../widgets/seller_image_picker.dart';
 
 class SellerProfileScreen extends StatefulWidget {
   final Map<String, dynamic> seller;
@@ -447,6 +452,15 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
               ),
               const SizedBox(height: 24),
 
+              // Business Images Section
+              _buildSectionHeader('Business Images'),
+              _buildBusinessImagesSection(),
+              const SizedBox(height: 24),
+
+              // Location & Delivery Zone Section
+              _buildLocationSection(),
+              const SizedBox(height: 24),
+
               // Account Status Section
               _buildSectionHeader('Account Status'),
               _buildReadOnlyField(
@@ -821,6 +835,101 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
         });
       }
     }
+  }
+
+  /// Build business images section with all three image types
+  Widget _buildBusinessImagesSection() {
+    return Column(
+      children: [
+        // Business Logo
+        SellerImagePicker(
+          sellerId: _currentSellerData['id'],
+          imageType: SellerImageType.logo,
+          currentImageUrl: _currentSellerData['business_logo_url'],
+          onImageUploaded: (imageUrl) =>
+              _updateSellerImage('business_logo_url', imageUrl),
+          onError: (error) => _showImageError(error),
+          enabled: _isEditing,
+        ),
+        const SizedBox(height: 16),
+
+        // Seller Profile Image
+        SellerImagePicker(
+          sellerId: _currentSellerData['id'],
+          imageType: SellerImageType.profile,
+          currentImageUrl: _currentSellerData['seller_image_url'],
+          onImageUploaded: (imageUrl) =>
+              _updateSellerImage('seller_image_url', imageUrl),
+          onError: (error) => _showImageError(error),
+          enabled: _isEditing,
+        ),
+        const SizedBox(height: 16),
+
+        // Shop Image
+        SellerImagePicker(
+          sellerId: _currentSellerData['id'],
+          imageType: SellerImageType.shop,
+          currentImageUrl: _currentSellerData['shop_image_url'],
+          onImageUploaded: (imageUrl) =>
+              _updateSellerImage('shop_image_url', imageUrl),
+          onError: (error) => _showImageError(error),
+          enabled: _isEditing,
+        ),
+      ],
+    );
+  }
+
+  /// Build location and delivery zone section
+  Widget _buildLocationSection() {
+    return SellerLocationPicker(
+      sellerId: _currentSellerData['id'],
+      currentLatitude: _currentSellerData['latitude']?.toDouble(),
+      currentLongitude: _currentSellerData['longitude']?.toDouble(),
+      currentDeliveryRadius: _currentSellerData['delivery_radius_km'],
+      currentLocationVerified: _currentSellerData['location_verified'],
+      currentAddress: _currentSellerData['business_address'],
+      onLocationUpdated: (locationData) => _updateSellerLocation(locationData),
+      onError: (error) => _showLocationError(error),
+      enabled: _isEditing,
+    );
+  }
+
+  /// Update seller image URL in current data
+  void _updateSellerImage(String fieldName, String imageUrl) {
+    setState(() {
+      if (imageUrl.isEmpty) {
+        _currentSellerData[fieldName] = null;
+      } else {
+        _currentSellerData[fieldName] = imageUrl;
+      }
+    });
+  }
+
+  /// Update seller location data
+  void _updateSellerLocation(Map<String, dynamic> locationData) {
+    setState(() {
+      _currentSellerData.addAll(locationData);
+    });
+  }
+
+  /// Show image upload error
+  void _showImageError(String error) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Image Error: $error'),
+        backgroundColor: Colors.red,
+      ),
+    );
+  }
+
+  /// Show location error
+  void _showLocationError(String error) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Location Error: $error'),
+        backgroundColor: Colors.red,
+      ),
+    );
   }
 
   /// Build section header with consistent styling
