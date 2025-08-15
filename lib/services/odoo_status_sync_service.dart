@@ -5,16 +5,23 @@ import '../config/api_config.dart';
 class OdooStatusSyncService {
   final SupabaseClient _supabase = Supabase.instance.client;
 
-  /// Sync approval status for all products from Odoo
+  /// High-performance batch sync for all products from Odoo
   Future<Map<String, dynamic>> syncAllProductStatus({
     String? sellerId,
     bool showLogs = true,
   }) async {
-    try {
-      if (showLogs) print('🔄 ODOO SYNC - Starting approval status sync...');
+    final startTime = DateTime.now();
 
-      // Get all products that have been synced to Odoo (have odoo_product_id)
-      var query = _supabase.from('meat_products').select('*');
+    try {
+      if (showLogs)
+        print('🚀 FAST SYNC - Starting high-performance batch sync...');
+
+      // Get only products that are pending and have been created in Odoo
+      var query = _supabase
+          .from('meat_products')
+          .select('id, name, approval_status, odoo_product_id')
+          .eq('approval_status', 'pending')
+          .not('odoo_product_id', 'is', null);
 
       if (sellerId != null) {
         query = query.eq('seller_id', sellerId);
@@ -22,8 +29,121 @@ class OdooStatusSyncService {
 
       final localProducts = await query;
 
-      if (showLogs)
-        print('🔍 ODOO SYNC - Found ${localProducts.length} local products');
+      if (localProducts.isEmpty) {
+        if (showLogs) print('ℹ️ FAST SYNC - No pending products to sync');
+        return {
+          'success': true,
+          'total_products': 0,
+          'updated_count': 0,
+          'message': 'No products to sync',
+          'processing_time_ms': DateTime.now()
+              .difference(startTime)
+              .inMilliseconds,
+        };
+      }
+
+      if (showLogs) {
+        print('🔍 FAST SYNC - Found ${localProducts.length} pending products');
+      }
+
+      // Prepare batch payload
+      final products = localProducts
+          .map(
+            (product) => {
+              'id': product['id'],
+              'name': product['name'],
+              'odoo_product_id': product['odoo_product_id'],
+            },
+          )
+          .toList();
+
+      final currentStatuses = <String, String>{};
+      for (final product in localProducts) {
+        currentStatuses[product['id']] = product['approval_status'];
+      }
+
+      // Single batch API call instead of N individual calls
+      if (showLogs) print('⚡ FAST SYNC - Making single batch API call...');
+
+      final response = await _supabase.functions.invoke(
+        'odoo-batch-status-sync',
+        body: {
+          'products': products,
+          'current_statuses': currentStatuses,
+          'start_time': startTime.millisecondsSinceEpoch,
+        },
+        headers: ApiConfig.webhookHeaders,
+      );
+
+      if (response.data != null && response.data['success'] == true) {
+        final updatedCount = response.data['status_changes'] ?? 0;
+        final changes = response.data['changes'] ?? [];
+        final processingTime = DateTime.now()
+            .difference(startTime)
+            .inMilliseconds;
+
+        if (showLogs) {
+          print('✅ FAST SYNC - Batch completed successfully:');
+          print('   • Products processed: ${localProducts.length}');
+          print('   • Status updates: $updatedCount');
+          print('   • Processing time: ${processingTime}ms');
+
+          // Log individual changes
+          for (final change in changes) {
+            print(
+              '   📝 ${change['product_name']}: ${change['old_status']} → ${change['new_status']}',
+            );
+          }
+        }
+
+        return {
+          'success': true,
+          'total_products': localProducts.length,
+          'updated_count': updatedCount,
+          'changes': changes,
+          'processing_time_ms': processingTime,
+          'message': 'Fast batch sync completed successfully',
+        };
+      } else {
+        throw Exception(
+          'Batch sync failed: ${response.data?['error'] ?? 'Unknown error'}',
+        );
+      }
+    } catch (e) {
+      final processingTime = DateTime.now()
+          .difference(startTime)
+          .inMilliseconds;
+      if (showLogs) {
+        print('❌ FAST SYNC - Error after ${processingTime}ms: ${e.toString()}');
+      }
+
+      // Fallback to individual sync if batch fails
+      if (showLogs) print('🔄 FAST SYNC - Falling back to individual sync...');
+      return await _fallbackIndividualSync(
+        sellerId: sellerId,
+        showLogs: showLogs,
+      );
+    }
+  }
+
+  /// Fallback to individual sync if batch sync fails
+  Future<Map<String, dynamic>> _fallbackIndividualSync({
+    String? sellerId,
+    bool showLogs = true,
+  }) async {
+    try {
+      // Get products for individual sync
+      var query = _supabase
+          .from('meat_products')
+          .select('*')
+          .eq('approval_status', 'pending')
+          .not('odoo_product_id', 'is', null);
+
+      if (sellerId != null) {
+        query = query.eq('seller_id', sellerId);
+      }
+
+      final localProducts = await query;
 
       int syncedCount = 0;
       int updatedCount = 0;
@@ -31,42 +151,28 @@ class OdooStatusSyncService {
 
       for (final product in localProducts) {
         try {
-          // Only sync products that were successfully created in Odoo
-          // We'll identify them by checking if they have a recent created_at timestamp
-          // and approval_status is still pending (meaning they might be approved in Odoo)
+          final syncResult = await _syncSingleProductStatus(
+            product['id'],
+            product['name'],
+            showLogs: false,
+          );
 
-          if (product['approval_status'] == 'pending') {
-            final syncResult = await _syncSingleProductStatus(
-              product['id'],
-              product['name'],
-              showLogs: false,
-            );
-
-            if (syncResult['success']) {
-              syncedCount++;
-              if (syncResult['updated']) {
-                updatedCount++;
-                if (showLogs) {
-                  print(
-                    '✅ ODOO SYNC - Updated ${product['name']}: ${syncResult['old_status']} → ${syncResult['new_status']}',
-                  );
-                }
+          if (syncResult['success']) {
+            syncedCount++;
+            if (syncResult['updated']) {
+              updatedCount++;
+              if (showLogs) {
+                print(
+                  '✅ FALLBACK SYNC - Updated ${product['name']}: ${syncResult['old_status']} → ${syncResult['new_status']}',
+                );
               }
-            } else {
-              errors.add('${product['name']}: ${syncResult['error']}');
             }
+          } else {
+            errors.add('${product['name']}: ${syncResult['error']}');
           }
         } catch (e) {
           errors.add('${product['name']}: ${e.toString()}');
         }
-      }
-
-      if (showLogs) {
-        print('📊 ODOO SYNC - Sync completed:');
-        print('   • Products checked: ${localProducts.length}');
-        print('   • Products synced: $syncedCount');
-        print('   • Status updates: $updatedCount');
-        print('   • Errors: ${errors.length}');
       }
 
       return {
@@ -75,14 +181,13 @@ class OdooStatusSyncService {
         'synced_count': syncedCount,
         'updated_count': updatedCount,
         'errors': errors,
-        'message': 'Sync completed successfully',
+        'message': 'Fallback sync completed',
       };
     } catch (e) {
-      if (showLogs) print('❌ ODOO SYNC - Error: ${e.toString()}');
       return {
         'success': false,
         'error': e.toString(),
-        'message': 'Sync failed',
+        'message': 'Fallback sync failed',
       };
     }
   }
@@ -104,6 +209,7 @@ class OdooStatusSyncService {
           .single();
 
       final currentStatus = localProduct['approval_status'];
+      final odooProductId = localProduct['odoo_product_id'];
 
       // Call Odoo status check webhook
       final response = await _supabase.functions.invoke(
@@ -112,13 +218,29 @@ class OdooStatusSyncService {
           'product_id': productId,
           'product_name': productName,
           'current_status': currentStatus,
+          if (odooProductId != null) 'odoo_product_id': odooProductId,
         },
         headers: ApiConfig.webhookHeaders,
       );
 
       if (response.data != null && response.data['success'] == true) {
-        final odooStatus = response.data['odoo_status'];
-        final statusChanged = response.data['status_changed'] == true;
+        // Derive effective status strictly from Odoo state when available
+        final rawOdooStatus = response.data['odoo_status'];
+        final odooState = response.data['odoo_state'];
+        var odooStatus = rawOdooStatus;
+        if (odooState != null) {
+          if (odooState == 'approved') {
+            odooStatus = 'approved';
+          } else if (odooState == 'rejected') {
+            odooStatus = 'rejected';
+          } else {
+            // Any non-approved/non-rejected state is treated as pending
+            odooStatus = 'pending';
+          }
+        }
+
+        // Compute status change locally to avoid trusting remote flag
+        final statusChanged = odooStatus != currentStatus;
 
         if (statusChanged) {
           // 🚨 ENHANCED SAFETY GUARDS: Multiple checks to prevent auto-approval
@@ -149,8 +271,11 @@ class OdooStatusSyncService {
               }
 
               // Safety Guard 2: Product must be at least 2 minutes old to prevent immediate approval
-              final createdAt = DateTime.parse(productCheck['created_at']);
-              final productAge = DateTime.now().difference(createdAt);
+              final createdAt = DateTime.parse(
+                productCheck['created_at'],
+              ).toUtc();
+              final nowUtc = DateTime.now().toUtc();
+              final productAge = nowUtc.difference(createdAt);
               const minAge = Duration(minutes: 2);
 
               if (productAge < minAge) {

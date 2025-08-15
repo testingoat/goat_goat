@@ -6,9 +6,10 @@ const corsHeaders = {
 };
 
 // Function to check product approval status in Odoo
-async function checkProductStatusInOdoo(productName: string) {
-  console.log(`🔍 ODOO STATUS CHECK - Checking status for: ${productName}`);
-  
+// Prefer lookup by odoo_product_id; fallback to exact name match only if no ID
+async function checkProductStatusInOdoo({ odooProductId, productName }: { odooProductId?: number | null; productName: string; }) {
+  console.log(`🔍 ODOO STATUS CHECK - Checking status for: ${productName} (odoo_id=${odooProductId ?? 'none'})`);
+
   try {
     // Hard-coded Odoo credentials (same as working webhook)
     const odooUrl = "https://goatgoat.xyz/";
@@ -17,7 +18,7 @@ async function checkProductStatusInOdoo(productName: string) {
     const odooPassword = "admin";
 
     console.log(`🔐 ODOO STATUS CHECK - Authenticating with Odoo...`);
-    
+
     // Step 1: Authenticate with Odoo
     const authResponse = await fetch(`${odooUrl}/web/session/authenticate`, {
       method: 'POST',
@@ -40,9 +41,17 @@ async function checkProductStatusInOdoo(productName: string) {
     const sessionCookie = authResponse.headers.get('set-cookie') || '';
     console.log(`🔐 ODOO STATUS CHECK - Auth successful`);
 
-    // Step 2: Search for product by name in Odoo
-    console.log(`🔍 ODOO STATUS CHECK - Searching for product: ${productName}`);
-    
+    // Step 2: Search for product - prefer ID lookup, fallback to exact name match
+    let searchDomain: any[] = [];
+    if (odooProductId) {
+      searchDomain = [['id', '=', odooProductId]];
+      console.log(`🔍 ODOO STATUS CHECK - Searching by ID: ${odooProductId}`);
+    } else {
+      // Use exact name match to avoid false positives on similar names
+      searchDomain = [['name', '=', productName]];
+      console.log(`🔍 ODOO STATUS CHECK - Searching by exact name: ${productName}`);
+    }
+
     const searchResponse = await fetch(`${odooUrl}/web/dataset/call_kw`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Cookie': sessionCookie },
@@ -53,8 +62,8 @@ async function checkProductStatusInOdoo(productName: string) {
           model: 'product.template',
           method: 'search_read',
           args: [
-            [['name', 'ilike', productName]], // Search by name (case-insensitive)
-            ['id', 'name', 'state', 'active'] // Fields to retrieve
+            searchDomain,
+            ['id', 'name', 'state', 'active']
           ],
           kwargs: { limit: 1 },
         },
@@ -151,8 +160,11 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Check product status in Odoo
-    const odooStatusResult = await checkProductStatusInOdoo(payload.product_name);
+    // Check product status in Odoo (use odoo_product_id if present)
+    const odooStatusResult = await checkProductStatusInOdoo({
+      odooProductId: payload.odoo_product_id,
+      productName: payload.product_name,
+    });
 
     if (!odooStatusResult.success) {
       return new Response(JSON.stringify({

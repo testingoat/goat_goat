@@ -703,7 +703,9 @@ class _ProductManagementScreenState extends State<ProductManagementScreen>
   }
 
   Future<void> _syncWithOdoo() async {
-    // Show loading indicator
+    final startTime = DateTime.now();
+
+    // Show optimized loading indicator with performance tracking
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Row(
@@ -717,22 +719,26 @@ class _ProductManagementScreenState extends State<ProductManagementScreen>
               ),
             ),
             SizedBox(width: 16),
-            Text('Syncing approval status with Odoo...'),
+            Text('⚡ Fast syncing with Odoo...'),
           ],
         ),
         backgroundColor: Color(0xFF059669),
-        duration: Duration(seconds: 30), // Longer duration for sync
+        duration: Duration(seconds: 10), // Shorter duration for fast sync
       ),
     );
 
     try {
-      // Sync approval status for this seller's products
+      // High-performance batch sync
       final syncResult = await _syncService.syncAllProductStatus(
         sellerId: widget.seller['id'],
         showLogs: true,
       );
 
-      // Hide loading snackbar
+      final processingTime = DateTime.now()
+          .difference(startTime)
+          .inMilliseconds;
+
+      // Hide loading snackbar immediately
       if (mounted) {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
       }
@@ -740,6 +746,9 @@ class _ProductManagementScreenState extends State<ProductManagementScreen>
       if (syncResult['success']) {
         final updatedCount = syncResult['updated_count'] ?? 0;
         final totalCount = syncResult['total_products'] ?? 0;
+
+        // Immediately refresh the product list to show updated statuses
+        await _loadProducts();
         final errors = syncResult['errors'] as List<String>? ?? [];
 
         // Show success message
