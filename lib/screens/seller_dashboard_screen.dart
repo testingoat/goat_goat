@@ -5,6 +5,7 @@ import '../supabase_service.dart';
 import '../services/odoo_service.dart';
 import '../services/auth_service.dart';
 import '../services/seller_notification_service.dart';
+import '../services/seller_status_sync_service.dart';
 import 'product_management_screen.dart';
 import 'seller_profile_screen.dart';
 import 'seller_notifications_screen.dart';
@@ -24,16 +25,19 @@ class _SellerDashboardScreenState extends State<SellerDashboardScreen> {
   final AuthService _authService = AuthService();
   final SellerNotificationService _notificationService =
       SellerNotificationService();
+  final SellerStatusSyncService _statusSyncService = SellerStatusSyncService();
 
   bool _isLoading = true;
   Map<String, dynamic> _dashboardData = {};
   int _notificationCount = 0;
+  bool _isSyncingStatus = false;
 
   @override
   void initState() {
     super.initState();
     _loadDashboardData();
     _updateNotificationCount();
+    _checkSellerApprovalStatus(); // Check approval status on dashboard load
   }
 
   Future<void> _logout() async {
@@ -269,6 +273,200 @@ class _SellerDashboardScreenState extends State<SellerDashboardScreen> {
     }
   }
 
+  /// Check seller approval status from Odoo and update if changed
+  Future<void> _checkSellerApprovalStatus() async {
+    try {
+      // Only check status for pending sellers or if it's been a while since last check
+      final currentStatus = widget.seller['approval_status'];
+      final odooSellerId = widget.seller['odoo_seller_id'];
+
+      // Skip if seller is not in Odoo yet
+      if (odooSellerId == null) {
+        print('ℹ️ Seller not synced to Odoo yet, skipping status check');
+        return;
+      }
+
+      // Skip if already approved (unless it's been more than a day)
+      if (currentStatus == 'approved') {
+        final updatedAt = widget.seller['updated_at'];
+        if (updatedAt != null) {
+          final lastUpdate = DateTime.parse(updatedAt);
+          final hoursSinceUpdate = DateTime.now()
+              .difference(lastUpdate)
+              .inHours;
+          if (hoursSinceUpdate < 24) {
+            print('ℹ️ Seller recently approved, skipping status check');
+            return;
+          }
+        }
+      }
+
+      print('🔄 Checking seller approval status from Odoo...');
+
+      final result = await _statusSyncService.syncSellerStatus(
+        widget.seller['id'],
+        sellerName: widget.seller['seller_name'],
+        showLogs: true,
+      );
+
+      if (result['success'] == true && result['status_changed'] == true) {
+        final newStatus = result['current_status'];
+        final previousStatus = result['previous_status'];
+
+        print('✅ Seller status updated: $previousStatus → $newStatus');
+
+        // Show status change notification to user
+        if (mounted) {
+          _showStatusChangeNotification(previousStatus, newStatus);
+
+          // Reload dashboard data to reflect new status
+          _loadDashboardData();
+        }
+      } else if (result['success'] == true) {
+        print('ℹ️ Seller status unchanged: ${result['current_status']}');
+      } else {
+        print('⚠️ Status sync failed: ${result['error']}');
+      }
+    } catch (e) {
+      print('❌ Error checking seller approval status: $e');
+      // Don't show error to user for background status checks
+    }
+  }
+
+  /// Manually sync seller status (called by user action)
+  Future<void> _manualStatusSync() async {
+    if (_isSyncingStatus) return; // Prevent multiple simultaneous syncs
+
+    setState(() {
+      _isSyncingStatus = true;
+    });
+
+    try {
+      print('🔄 Manual seller status sync requested...');
+
+      final result = await _statusSyncService.syncSellerStatus(
+        widget.seller['id'],
+        sellerName: widget.seller['seller_name'],
+        showLogs: true,
+      );
+
+      if (mounted) {
+        if (result['success'] == true) {
+          if (result['status_changed'] == true) {
+            final newStatus = result['current_status'];
+            final previousStatus = result['previous_status'];
+
+            _showStatusChangeNotification(previousStatus, newStatus);
+            _loadDashboardData(); // Reload dashboard
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Status updated: $previousStatus → $newStatus'),
+                backgroundColor: const Color(0xFF059669),
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Status is up to date: ${result['current_status']}',
+                ),
+                backgroundColor: const Color(0xFF3B82F6),
+                duration: const Duration(seconds: 2),
+              ),
+            );
+          }
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Sync failed: ${result['error'] ?? 'Unknown error'}',
+              ),
+              backgroundColor: const Color(0xFFDC2626),
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print('❌ Manual status sync error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to sync status. Please try again.'),
+            backgroundColor: Color(0xFFDC2626),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSyncingStatus = false;
+        });
+      }
+    }
+  }
+
+  /// Show status change notification dialog
+  void _showStatusChangeNotification(String previousStatus, String newStatus) {
+    if (!mounted) return;
+
+    String title;
+    String message;
+    Color color;
+    IconData icon;
+
+    switch (newStatus) {
+      case 'approved':
+        title = '🎉 Congratulations!';
+        message =
+            'Your seller account has been approved! You can now start selling your products.';
+        color = const Color(0xFF059669);
+        icon = Icons.check_circle;
+        break;
+      case 'rejected':
+        title = '❌ Account Rejected';
+        message =
+            'Your seller account has been rejected. Please contact support for more information.';
+        color = const Color(0xFFDC2626);
+        icon = Icons.cancel;
+        break;
+      case 'pending':
+        title = '⏳ Status Updated';
+        message = 'Your account status has been updated to pending review.';
+        color = const Color(0xFFF59E0B);
+        icon = Icons.hourglass_empty;
+        break;
+      default:
+        title = '📋 Status Updated';
+        message = 'Your account status has been updated to: $newStatus';
+        color = const Color(0xFF3B82F6);
+        icon = Icons.info;
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(icon, color: color, size: 28),
+            const SizedBox(width: 12),
+            Expanded(child: Text(title)),
+          ],
+        ),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -487,14 +685,44 @@ class _SellerDashboardScreenState extends State<SellerDashboardScreen> {
                   size: 16,
                 ),
                 const SizedBox(width: 8),
-                Text(
-                  'Status: ${_getStatusText(widget.seller['approval_status'])}',
-                  style: TextStyle(
-                    color: _getStatusColor(widget.seller['approval_status']),
-                    fontWeight: FontWeight.w500,
-                    fontSize: 14,
+                Expanded(
+                  child: Text(
+                    'Status: ${_getStatusText(widget.seller['approval_status'])}',
+                    style: TextStyle(
+                      color: _getStatusColor(widget.seller['approval_status']),
+                      fontWeight: FontWeight.w500,
+                      fontSize: 14,
+                    ),
                   ),
                 ),
+                // Add status sync button for pending sellers or manual refresh
+                if (widget.seller['approval_status'] == 'pending' ||
+                    widget.seller['odoo_seller_id'] != null)
+                  TextButton.icon(
+                    onPressed: _isSyncingStatus ? null : _manualStatusSync,
+                    icon: _isSyncingStatus
+                        ? const SizedBox(
+                            width: 12,
+                            height: 12,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.refresh, size: 16),
+                    label: Text(
+                      _isSyncingStatus ? 'Syncing...' : 'Check Status',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    style: TextButton.styleFrom(
+                      foregroundColor: _getStatusColor(
+                        widget.seller['approval_status'],
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                  ),
               ],
             ),
           ),

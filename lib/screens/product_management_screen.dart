@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../supabase_service.dart';
 import '../services/odoo_service.dart';
@@ -29,6 +30,10 @@ class _ProductManagementScreenState extends State<ProductManagementScreen>
   String _selectedFilter = 'all';
   ProductFilter _currentFilter = ProductFilter();
 
+  // Background sync automation
+  Timer? _backgroundSyncTimer;
+  bool _isBackgroundSyncEnabled = false;
+
   @override
   void initState() {
     super.initState();
@@ -48,11 +53,15 @@ class _ProductManagementScreenState extends State<ProductManagementScreen>
       }
       _loadProducts();
     });
+
+    // Initialize background sync automation
+    _initializeBackgroundSync();
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+    _backgroundSyncTimer?.cancel();
     super.dispose();
   }
 
@@ -822,6 +831,77 @@ class _ProductManagementScreenState extends State<ProductManagementScreen>
         ],
       ),
     );
+  }
+
+  /// Initialize background sync automation with feature flag control
+  Future<void> _initializeBackgroundSync() async {
+    try {
+      // Check if background sync is enabled via feature flag
+      final isEnabled = await FeatureFlags.isEnabledRemote(
+        'background_sync_automation',
+      );
+
+      if (isEnabled) {
+        _isBackgroundSyncEnabled = true;
+        _startBackgroundSync();
+        print('🔄 BACKGROUND SYNC - Automation enabled (30 second intervals)');
+      } else {
+        print('ℹ️ BACKGROUND SYNC - Automation disabled via feature flag');
+      }
+    } catch (e) {
+      print('❌ BACKGROUND SYNC - Failed to initialize: $e');
+    }
+  }
+
+  /// Start the background sync timer
+  void _startBackgroundSync() {
+    if (!_isBackgroundSyncEnabled) return;
+
+    _backgroundSyncTimer?.cancel();
+    _backgroundSyncTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
+      _performBackgroundSync();
+    });
+  }
+
+  /// Perform background sync with performance optimization
+  Future<void> _performBackgroundSync() async {
+    if (!mounted || !_isBackgroundSyncEnabled) return;
+
+    try {
+      // Only sync if there are pending products to avoid unnecessary API calls
+      final needsSync = await _syncService.isSyncNeeded(
+        sellerId: widget.seller['id'],
+      );
+
+      if (needsSync) {
+        print('🔄 BACKGROUND SYNC - Syncing pending products...');
+
+        final syncResult = await _syncService.syncAllProductStatus(
+          sellerId: widget.seller['id'],
+          showLogs: false, // Silent background sync
+        );
+
+        if (syncResult['success'] && syncResult['updated_count'] > 0) {
+          print(
+            '✅ BACKGROUND SYNC - Updated ${syncResult['updated_count']} products',
+          );
+
+          // Refresh the UI if products were updated
+          if (mounted) {
+            _loadProducts();
+          }
+        }
+      }
+    } catch (e) {
+      print('❌ BACKGROUND SYNC - Error: $e');
+    }
+  }
+
+  /// Stop background sync (called on dispose)
+  void _stopBackgroundSync() {
+    _backgroundSyncTimer?.cancel();
+    _backgroundSyncTimer = null;
+    _isBackgroundSyncEnabled = false;
   }
 
   void _showAddProductDialog() {

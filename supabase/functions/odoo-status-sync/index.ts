@@ -84,12 +84,15 @@ async function checkProductStatusInOdoo(productName: string) {
     console.log(`✅ ODOO STATUS CHECK - Product found: ${JSON.stringify(odooProduct)}`);
 
     // Map Odoo state to our approval status
+    // 🚨 CRITICAL FIX: Only check odooProduct.state, NOT active status
+    // The active field is set to true by default in Odoo and doesn't indicate approval
     let approvalStatus = 'pending';
-    if (odooProduct.state === 'approved' || odooProduct.active === true) {
+    if (odooProduct.state === 'approved') {
       approvalStatus = 'approved';
-    } else if (odooProduct.state === 'rejected' || odooProduct.active === false) {
+    } else if (odooProduct.state === 'rejected') {
       approvalStatus = 'rejected';
     }
+    // Note: We removed the active field checks to prevent auto-approval bug
 
     console.log(`📊 ODOO STATUS CHECK - Status mapping: ${odooProduct.state} → ${approvalStatus}`);
 

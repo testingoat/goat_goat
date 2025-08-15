@@ -121,40 +121,85 @@ class OdooStatusSyncService {
         final statusChanged = response.data['status_changed'] == true;
 
         if (statusChanged) {
-          // Guard against accidental auto-approval: only accept approved if evidence exists
+          // 🚨 ENHANCED SAFETY GUARDS: Multiple checks to prevent auto-approval
           if (odooStatus == 'approved') {
             try {
               final productCheck = await _supabase
                   .from('meat_products')
-                  .select('odoo_product_id')
+                  .select('odoo_product_id, created_at, approval_status')
                   .eq('id', productId)
                   .single();
+
+              // Safety Guard 1: Must have valid Odoo product ID
               final hasOdooId =
                   productCheck['odoo_product_id'] != null &&
                   productCheck['odoo_product_id'].toString().isNotEmpty;
               if (!hasOdooId) {
                 if (showLogs) {
                   print(
-                    '🛡️ ODOO SYNC - Ignoring approved status without odoo_product_id for product $productName',
+                    '🛡️ SAFETY GUARD 1 - Ignoring approved status without odoo_product_id for product $productName',
                   );
                 }
                 return {
                   'success': true,
                   'updated': false,
                   'status': currentStatus,
+                  'safety_guard': 'missing_odoo_id',
                 };
               }
-            } catch (_) {
-              // If check fails, be conservative and do not auto-approve
+
+              // Safety Guard 2: Product must be at least 2 minutes old to prevent immediate approval
+              final createdAt = DateTime.parse(productCheck['created_at']);
+              final productAge = DateTime.now().difference(createdAt);
+              const minAge = Duration(minutes: 2);
+
+              if (productAge < minAge) {
+                if (showLogs) {
+                  print(
+                    '🛡️ SAFETY GUARD 2 - Product too new for approval: ${productAge.inSeconds}s < ${minAge.inSeconds}s for $productName',
+                  );
+                }
+                return {
+                  'success': true,
+                  'updated': false,
+                  'status': currentStatus,
+                  'safety_guard': 'product_too_new',
+                };
+              }
+
+              // Safety Guard 3: Only allow pending -> approved transition
+              final currentApprovalStatus = productCheck['approval_status'];
+              if (currentApprovalStatus != 'pending') {
+                if (showLogs) {
+                  print(
+                    '🛡️ SAFETY GUARD 3 - Invalid status transition: $currentApprovalStatus -> approved for $productName',
+                  );
+                }
+                return {
+                  'success': true,
+                  'updated': false,
+                  'status': currentStatus,
+                  'safety_guard': 'invalid_transition',
+                };
+              }
+
               if (showLogs) {
                 print(
-                  '🛡️ ODOO SYNC - Safety guard prevented approval due to check error for $productName',
+                  '✅ SAFETY GUARDS PASSED - Approving product $productName (age: ${productAge.inMinutes}min, odoo_id: ${productCheck['odoo_product_id']})',
+                );
+              }
+            } catch (e) {
+              // If any check fails, be conservative and do not auto-approve
+              if (showLogs) {
+                print(
+                  '🛡️ SAFETY GUARD ERROR - Prevented approval due to check error for $productName: $e',
                 );
               }
               return {
                 'success': true,
                 'updated': false,
                 'status': currentStatus,
+                'safety_guard': 'check_error',
               };
             }
           }

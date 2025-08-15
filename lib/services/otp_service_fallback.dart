@@ -171,7 +171,7 @@ class OTPServiceFallback {
         }
 
         // Check attempts
-        if (attempts >= 3) {
+        if (attempts >= 10) {
           _otpStorage.remove(cleanPhoneNumber);
           return {
             'success': false,

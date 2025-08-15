@@ -343,7 +343,7 @@ async function createSellerInOdoo(sellerData: SellerData, options: { dryRun?: bo
     customer_rank: 0,
     mobile: sellerData.contact_phone || '',
     email: sellerData.email || null,
-    state: 'pending',
+    state: 'Pending for Approval', // 🚀 CRITICAL FIX: Correct state value for Odoo custom module
     street: sellerData.business_address || '',
     city: sellerData.business_city || '',
     zip: sellerData.business_pincode || '',
