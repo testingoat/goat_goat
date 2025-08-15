@@ -15,6 +15,7 @@ import 'config/ui_flags.dart';
 // Firebase imports
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'firebase_options.dart';
 import 'services/fcm_service.dart';
 import 'dart:convert';
@@ -31,14 +32,58 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     print("📝 Body: ${message.notification?.body}");
   }
 
-  // Show system notification (this appears in notification panel)
+  // CRITICAL FIX: Use flutter_local_notifications directly for background messages
   try {
-    final fcmService = FCMService();
-    await fcmService.showLocalNotification(
-      title: message.notification?.title ?? 'Goat Goat',
-      body: message.notification?.body ?? 'You have a new notification',
+    final localNotifications = FlutterLocalNotificationsPlugin();
+
+    // Initialize with minimal settings for background context
+    const androidSettings = AndroidInitializationSettings(
+      '@mipmap/ic_launcher',
+    );
+    const initSettings = InitializationSettings(android: androidSettings);
+    await localNotifications.initialize(initSettings);
+
+    // Create notification channel if needed
+    final androidPlugin = localNotifications
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
+
+    // CRITICAL: Use the same channel ID as AndroidManifest.xml
+    const channel = AndroidNotificationChannel(
+      'goat_goat_notifications', // Match AndroidManifest.xml
+      'Goat Goat Notifications',
+      description: 'This channel is used for Goat Goat app notifications.',
+      importance: Importance.high,
+    );
+    await androidPlugin?.createNotificationChannel(channel);
+
+    // Show notification with correct channel
+    const androidDetails = AndroidNotificationDetails(
+      'goat_goat_notifications', // Match AndroidManifest.xml
+      'Goat Goat Notifications',
+      channelDescription:
+          'This channel is used for Goat Goat app notifications.',
+      importance: Importance.high,
+      priority: Priority.high,
+      enableVibration: true,
+      playSound: true,
+    );
+
+    const notificationDetails = NotificationDetails(android: androidDetails);
+
+    await localNotifications.show(
+      message.hashCode,
+      message.notification?.title ?? 'Goat Goat',
+      message.notification?.body ?? 'You have a new notification',
+      notificationDetails,
       payload: jsonEncode(message.data),
     );
+
+    if (kDebugMode) {
+      print("✅ Background notification shown successfully");
+      print("📱 Channel: goat_goat_notifications");
+    }
   } catch (e) {
     if (kDebugMode) {
       print("❌ Error showing background notification: $e");

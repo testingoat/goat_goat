@@ -110,16 +110,28 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // API Key authentication
+    // Dual authentication: API Key (for Flutter) OR Odoo Token (for Odoo)
     const apiKey = req.headers.get("x-api-key");
     const expectedApiKey = Deno.env.get("WEBHOOK_API_KEY");
-    
-    if (!apiKey || apiKey !== expectedApiKey) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+    const odooToken = req.headers.get("x-odoo-webhook-token");
+    const expectedOdooToken = Deno.env.get("ODOO_WEBHOOK_TOKEN") || "odoo-goatgoat-sync-2024";
+
+    const isApiKeyValid = apiKey && apiKey === expectedApiKey;
+    const isOdooTokenValid = odooToken && odooToken === expectedOdooToken;
+
+    if (!isApiKeyValid && !isOdooTokenValid) {
+      console.log(`❌ DUAL AUTH - API Key: ${apiKey ? 'present' : 'missing'}, Odoo Token: ${odooToken ? 'present' : 'missing'}`);
+      return new Response(JSON.stringify({
+        error: "Unauthorized - Valid API key or Odoo token required",
+        auth_methods: ["x-api-key", "x-odoo-webhook-token"]
+      }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 401
       });
     }
+
+    const authMethod = isApiKeyValid ? "api_key" : "odoo_token";
+    console.log(`✅ DUAL AUTH - Authenticated via: ${authMethod}`);
 
     const url = new URL(req.url);
     const dryRun = url.searchParams.get('dryRun') === 'true';
@@ -137,14 +149,33 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Validate required fields
-    if (!payload.product_id || !payload.seller_id || !payload.product_type || !payload.approval_status) {
-      return new Response(JSON.stringify({
-        error: "Missing required fields: product_id, seller_id, product_type, approval_status"
-      }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 400
-      });
+    // Handle both Flutter-style and Odoo-style payloads
+    const isOdooPayload = payload.odoo_product_id && !payload.product_id;
+
+    if (isOdooPayload) {
+      console.log(`🔄 ODOO PAYLOAD - Processing Odoo-style payload with odoo_product_id: ${payload.odoo_product_id}`);
+
+      // For Odoo payloads, we need to find the product by odoo_product_id
+      if (!payload.odoo_product_id || !payload.approval_status) {
+        return new Response(JSON.stringify({
+          error: "Missing required fields for Odoo payload: odoo_product_id, approval_status"
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400
+        });
+      }
+    } else {
+      console.log(`📱 FLUTTER PAYLOAD - Processing Flutter-style payload with product_id: ${payload.product_id}`);
+
+      // Validate required fields for Flutter payloads
+      if (!payload.product_id || !payload.seller_id || !payload.product_type || !payload.approval_status) {
+        return new Response(JSON.stringify({
+          error: "Missing required fields for Flutter payload: product_id, seller_id, product_type, approval_status"
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400
+        });
+      }
     }
 
     // Create Supabase client
@@ -154,30 +185,54 @@ Deno.serve(async (req) => {
       { auth: { persistSession: false } }
     );
 
-    // Verify seller exists
-    const { data: seller, error: sellerError } = await supabase
-      .from("sellers")
-      .select("id")
-      .eq("id", payload.seller_id)
-      .single();
+    let product, productError, productTable, approvalTable;
 
-    if (sellerError || !seller) {
-      return new Response(JSON.stringify({ error: "Seller not found" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 404
-      });
+    if (isOdooPayload) {
+      // For Odoo payloads, find product by odoo_product_id
+      productTable = 'meat_products'; // Assume meat products for now
+      approvalTable = 'product_approvals';
+
+      const { data: foundProduct, error: findError } = await supabase
+        .from(productTable)
+        .select("*")
+        .eq("odoo_product_id", payload.odoo_product_id)
+        .single();
+
+      product = foundProduct;
+      productError = findError;
+
+      console.log(`🔍 ODOO LOOKUP - Found product: ${product ? product.name : 'not found'}`);
+    } else {
+      // For Flutter payloads, verify seller exists first
+      const { data: seller, error: sellerError } = await supabase
+        .from("sellers")
+        .select("id")
+        .eq("id", payload.seller_id)
+        .single();
+
+      if (sellerError || !seller) {
+        return new Response(JSON.stringify({ error: "Seller not found" }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 404
+        });
+      }
+
+      productTable = payload.product_type === 'meat' ? 'meat_products' : 'livestock_listings';
+      approvalTable = payload.product_type === 'meat' ? 'product_approvals' : 'livestock_approvals';
+
+      // Find product by product_id and seller_id
+      const { data: foundProduct, error: findError } = await supabase
+        .from(productTable)
+        .select("*")
+        .eq("id", payload.product_id)
+        .eq("seller_id", payload.seller_id)
+        .single();
+
+      product = foundProduct;
+      productError = findError;
+
+      console.log(`🔍 FLUTTER LOOKUP - Found product: ${product ? product.name : 'not found'}`);
     }
-
-    let productTable = payload.product_type === 'meat' ? 'meat_products' : 'livestock_listings';
-    let approvalTable = payload.product_type === 'meat' ? 'product_approvals' : 'livestock_approvals';
-
-    // Find product
-    const { data: product, error: productError } = await supabase
-      .from(productTable)
-      .select("*")
-      .eq("id", payload.product_id)
-      .eq("seller_id", payload.seller_id)
-      .single();
 
     if (productError || !product) {
       return new Response(JSON.stringify({

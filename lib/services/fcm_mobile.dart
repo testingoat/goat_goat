@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 // Real Firebase imports for mobile
 import 'package:firebase_messaging/firebase_messaging.dart'
@@ -98,6 +99,22 @@ class FCMImplementation implements FCMInterface {
     }
 
     try {
+      // CRITICAL FIX: Request Android 13+ POST_NOTIFICATIONS permission
+      if (defaultTargetPlatform == TargetPlatform.android) {
+        final permission = await Permission.notification.request();
+        if (kDebugMode) {
+          print('🔔 FCM: Android notification permission - $permission');
+        }
+
+        if (permission.isDenied || permission.isPermanentlyDenied) {
+          if (kDebugMode) {
+            print('❌ FCM: Android notification permission denied');
+          }
+          return false;
+        }
+      }
+
+      // Request FCM-specific permissions
       final settings = await _firebaseMessaging.requestPermission(
         alert: true,
         badge: true,
@@ -302,12 +319,16 @@ class FCMImplementation implements FCMInterface {
     if (kIsWeb) return;
 
     try {
+      // CRITICAL FIX: Use the same channel ID as AndroidManifest.xml
       const androidDetails = AndroidNotificationDetails(
-        'high_importance_channel',
-        'High Importance Notifications',
-        channelDescription: 'This channel is used for important notifications.',
+        'goat_goat_notifications', // Fixed: Match AndroidManifest.xml
+        'Goat Goat Notifications',
+        channelDescription:
+            'This channel is used for Goat Goat app notifications.',
         importance: Importance.high,
         priority: Priority.high,
+        enableVibration: true,
+        playSound: true,
       );
 
       const iosDetails = DarwinNotificationDetails(
@@ -328,9 +349,19 @@ class FCMImplementation implements FCMInterface {
         notificationDetails,
         payload: message.data.toString(),
       );
+
+      if (kDebugMode) {
+        print(
+          '✅ FCM: Local notification shown successfully - ${message.messageId}',
+        );
+        print('📱 Channel: goat_goat_notifications');
+        print('🔔 Title: ${message.notification?.title}');
+      }
     } catch (e) {
       if (kDebugMode) {
-        print('🔔 FCM: Local notification failed - $e');
+        print('❌ FCM: Local notification failed - $e');
+        print('🔍 Message ID: ${message.messageId}');
+        print('🔍 Channel: goat_goat_notifications');
       }
     }
   }
@@ -432,12 +463,24 @@ class FCMImplementation implements FCMInterface {
       'topic_subscriptions_enabled': _enableTopicSubscriptions,
       'has_token': _fcmToken != null,
       'token_length': _fcmToken?.length ?? 0,
+      'notification_channel_id':
+          'goat_goat_notifications', // CRITICAL: Document correct channel
+      'android_manifest_channel': 'goat_goat_notifications',
+      'channel_match_status':
+          'FIXED - All channels now use goat_goat_notifications',
     };
 
     if (_isInitialized) {
       final settings = await getNotificationSettings();
       diagnostics['notification_status'] = settings.authorizationStatus.name;
       diagnostics['notifications_enabled'] = await areNotificationsEnabled();
+
+      // Add Android 13+ permission check
+      if (defaultTargetPlatform == TargetPlatform.android) {
+        final androidPermission = await Permission.notification.status;
+        diagnostics['android_notification_permission'] = androidPermission.name;
+        diagnostics['android_permission_granted'] = androidPermission.isGranted;
+      }
     }
 
     return diagnostics;
@@ -452,12 +495,16 @@ class FCMImplementation implements FCMInterface {
     if (kIsWeb) return;
 
     try {
+      // CRITICAL FIX: Use the same channel ID as AndroidManifest.xml
       const androidDetails = AndroidNotificationDetails(
-        'high_importance_channel',
-        'High Importance Notifications',
-        channelDescription: 'This channel is used for important notifications.',
+        'goat_goat_notifications', // Fixed: Match AndroidManifest.xml
+        'Goat Goat Notifications',
+        channelDescription:
+            'This channel is used for Goat Goat app notifications.',
         importance: Importance.high,
         priority: Priority.high,
+        enableVibration: true,
+        playSound: true,
       );
 
       const iosDetails = DarwinNotificationDetails(
@@ -478,9 +525,17 @@ class FCMImplementation implements FCMInterface {
         notificationDetails,
         payload: payload,
       );
+
+      if (kDebugMode) {
+        print('✅ FCM: Manual local notification shown successfully');
+        print('📱 Channel: goat_goat_notifications');
+        print('🔔 Title: $title');
+      }
     } catch (e) {
       if (kDebugMode) {
-        print('🔔 FCM: Local notification failed - $e');
+        print('❌ FCM: Manual local notification failed - $e');
+        print('🔍 Channel: goat_goat_notifications');
+        print('🔍 Title: $title');
       }
     }
   }

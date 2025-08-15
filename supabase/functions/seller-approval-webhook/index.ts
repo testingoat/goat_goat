@@ -54,20 +54,28 @@ serve(async (req) => {
       );
     }
 
-    // Validate API key
+    // Dual authentication: API Key (for Flutter) OR Odoo Token (for Odoo)
     const apiKey = req.headers.get('x-api-key');
     const expectedApiKey = Deno.env.get('WEBHOOK_API_KEY');
-    
-    if (!apiKey || apiKey !== expectedApiKey) {
-      console.log('❌ Invalid or missing API key');
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized - Invalid API key' }),
-        { 
-          status: 401, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
+    const odooToken = req.headers.get('x-odoo-webhook-token');
+    const expectedOdooToken = Deno.env.get('ODOO_WEBHOOK_TOKEN') || 'odoo-goatgoat-sync-2024';
+
+    const isApiKeyValid = apiKey && apiKey === expectedApiKey;
+    const isOdooTokenValid = odooToken && odooToken === expectedOdooToken;
+
+    if (!isApiKeyValid && !isOdooTokenValid) {
+      console.log(`❌ DUAL AUTH - API Key: ${apiKey ? 'present' : 'missing'}, Odoo Token: ${odooToken ? 'present' : 'missing'}`);
+      return new Response(JSON.stringify({
+        error: 'Unauthorized - Valid API key or Odoo token required',
+        auth_methods: ['x-api-key', 'x-odoo-webhook-token']
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 401
+      });
     }
+
+    const authMethod = isApiKeyValid ? 'api_key' : 'odoo_token';
+    console.log(`✅ DUAL AUTH - Authenticated via: ${authMethod}`);
 
     // Parse request body
     const url = new URL(req.url);
@@ -86,18 +94,37 @@ serve(async (req) => {
       });
     }
 
-    // Validate required fields
-    if (!payload.seller_id || typeof payload.is_approved !== 'boolean') {
-      console.log('❌ Missing required fields in payload');
-      return new Response(
-        JSON.stringify({ 
-          error: 'Missing required fields: seller_id, is_approved' 
-        }),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
+    // Handle both Flutter-style and Odoo-style payloads
+    const isOdooPayload = payload.odoo_seller_id && !payload.seller_id;
+
+    if (isOdooPayload) {
+      console.log(`🔄 ODOO PAYLOAD - Processing Odoo-style payload with odoo_seller_id: ${payload.odoo_seller_id}`);
+
+      // For Odoo payloads, we need different validation
+      if (!payload.odoo_seller_id || !payload.approval_status) {
+        return new Response(JSON.stringify({
+          error: "Missing required fields for Odoo payload: odoo_seller_id, approval_status"
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400
+        });
+      }
+    } else {
+      console.log(`📱 FLUTTER PAYLOAD - Processing Flutter-style payload with seller_id: ${payload.seller_id}`);
+
+      // Validate required fields for Flutter payloads
+      if (!payload.seller_id || typeof payload.is_approved !== 'boolean') {
+        console.log('❌ Missing required fields in Flutter payload');
+        return new Response(
+          JSON.stringify({
+            error: 'Missing required fields for Flutter payload: seller_id, is_approved'
+          }),
+          {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        );
+      }
     }
 
     // Initialize Supabase client
@@ -105,21 +132,47 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    console.log('🔍 Fetching seller data for ID:', payload.seller_id);
+    let sellerData, fetchError;
 
-    // Fetch seller data from database
-    const { data: sellerData, error: fetchError } = await supabase
-      .from('sellers')
-      .select('*')
-      .eq('id', payload.seller_id)
-      .single();
+    if (isOdooPayload) {
+      // For Odoo payloads, find seller by odoo_seller_id
+      console.log('🔍 ODOO LOOKUP - Fetching seller by odoo_seller_id:', payload.odoo_seller_id);
+
+      const { data: foundSeller, error: findError } = await supabase
+        .from('sellers')
+        .select('*')
+        .eq('odoo_seller_id', payload.odoo_seller_id)
+        .single();
+
+      sellerData = foundSeller;
+      fetchError = findError;
+
+      console.log(`🔍 ODOO LOOKUP - Found seller: ${sellerData ? sellerData.seller_name : 'not found'}`);
+    } else {
+      // For Flutter payloads, find seller by seller_id
+      console.log('🔍 FLUTTER LOOKUP - Fetching seller by seller_id:', payload.seller_id);
+
+      const { data: foundSeller, error: findError } = await supabase
+        .from('sellers')
+        .select('*')
+        .eq('id', payload.seller_id)
+        .single();
+
+      sellerData = foundSeller;
+      fetchError = findError;
+
+      console.log(`🔍 FLUTTER LOOKUP - Found seller: ${sellerData ? sellerData.seller_name : 'not found'}`);
+    }
 
     if (fetchError || !sellerData) {
-      console.log('❌ Seller not found:', fetchError?.message || 'No data');
+      const lookupField = isOdooPayload ? 'odoo_seller_id' : 'seller_id';
+      const lookupValue = isOdooPayload ? payload.odoo_seller_id : payload.seller_id;
+
+      console.log(`❌ Seller not found by ${lookupField}:`, fetchError?.message || 'No data');
       return new Response(
-        JSON.stringify({ 
-          error: 'Seller not found',
-          seller_id: payload.seller_id 
+        JSON.stringify({
+          error: `Seller not found by ${lookupField}`,
+          [lookupField]: lookupValue
         }),
         { 
           status: 404, 
@@ -130,14 +183,21 @@ serve(async (req) => {
 
     console.log('✅ Seller data fetched:', sellerData.seller_name);
 
-    // Determine approval status
-    const approvalStatus = payload.is_approved ? 'approved' : 'rejected';
-    
+    // Determine approval status based on payload type
+    let approvalStatus;
+    if (isOdooPayload) {
+      // For Odoo payloads, use approval_status directly
+      approvalStatus = payload.approval_status;
+    } else {
+      // For Flutter payloads, convert boolean to status
+      approvalStatus = payload.is_approved ? 'approved' : 'rejected';
+    }
+
     // Update seller approval status in database
     const updateData = {
       approval_status: approvalStatus,
-      approved_at: payload.is_approved ? new Date().toISOString() : null,
-      rejected_at: !payload.is_approved ? new Date().toISOString() : null,
+      approved_at: approvalStatus === 'approved' ? new Date().toISOString() : null,
+      rejected_at: approvalStatus === 'rejected' ? new Date().toISOString() : null,
       rejection_reason: payload.rejection_reason || null,
       updated_at: new Date().toISOString()
     };

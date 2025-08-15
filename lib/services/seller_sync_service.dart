@@ -29,8 +29,10 @@ class SellerSyncService {
         );
       }
 
-      // Prepare webhook payload for Odoo seller creation
+      // Prepare webhook payload for Odoo seller creation (V2 format)
       final webhookPayload = {
+        'payload_version':
+            'v2', // 🚀 CRITICAL: Required because FORCE_V2_WEBHOOKS=true
         'seller_id': sellerData['id'],
         'seller_name': sellerData['seller_name'],
         'contact_phone': sellerData['contact_phone'],

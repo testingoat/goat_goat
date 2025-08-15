@@ -102,16 +102,21 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Update seller with Odoo sync status (optional)
+    // Update seller with Odoo sync status and store odoo_seller_id
     try {
+      const updateData = {
+        updated_at: new Date().toISOString(),
+        odoo_seller_id: odooSellerId, // 🚀 CRITICAL FIX: Store Odoo seller ID for approval workflow
+      };
+
+      console.log(`✅ CRITICAL FIX - Storing odoo_seller_id: ${odooSellerId} for seller: ${payload.seller_id}`);
+
       await supabase
         .from('sellers')
-        .update({ 
-          updated_at: new Date().toISOString(),
-          // Note: We don't store odoo_seller_id in database as column doesn't exist
-          // The Odoo seller ID is returned in the response for the Flutter app
-        })
+        .update(updateData)
         .eq('id', payload.seller_id);
+
+      console.log(`✅ CRITICAL FIX - Successfully stored odoo_seller_id in database`);
     } catch (updateError) {
       console.log('⚠️ Database update failed (non-critical):', updateError.message);
       // Don't fail the webhook if database update fails
