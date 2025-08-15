@@ -8,6 +8,7 @@ import '../services/delivery_address_state.dart';
 import '../services/delivery_error_notification_service.dart';
 import '../widgets/address_picker.dart';
 import 'customer_checkout_screen.dart';
+import 'customer_product_catalog_screen.dart';
 
 /// Customer Shopping Cart Screen
 ///
@@ -414,7 +415,19 @@ class _CustomerShoppingCartScreenState
             ),
             const SizedBox(height: 24),
             ElevatedButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () {
+                if (widget.hideBackButton || !Navigator.of(context).canPop()) {
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(
+                      builder: (context) => CustomerProductCatalogScreen(
+                        customer: widget.customer,
+                      ),
+                    ),
+                  );
+                } else {
+                  Navigator.pop(context);
+                }
+              },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green[600],
                 foregroundColor: Colors.white,

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'config/ui_flags.dart';
+
 import 'dart:ui';
 import 'mobile_number_modal.dart';
 import 'seller_registration_screen.dart';
@@ -121,12 +123,24 @@ class _SellerPortalContent extends StatelessWidget {
             buttonText: 'Sign In',
             onTap: () {
               // Show mobile number modal
-              showDialog(
-                context: context,
-                builder: (BuildContext context) {
-                  return const MobileNumberModal();
-                },
-              );
+              if (UiFlags.enableSellerLoginBottomSheet) {
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (context) => const Padding(
+                    padding: EdgeInsets.only(top: 24),
+                    child: MobileNumberModal(),
+                  ),
+                );
+              } else {
+                showDialog(
+                  context: context,
+                  builder: (BuildContext context) {
+                    return const MobileNumberModal();
+                  },
+                );
+              }
             },
           ),
 

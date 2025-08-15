@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../config/ui_flags.dart';
+
 import '../supabase_service.dart';
 import '../services/odoo_service.dart';
 import '../services/auth_service.dart';
@@ -496,6 +498,75 @@ class _SellerDashboardScreenState extends State<SellerDashboardScreen> {
               ],
             ),
           ),
+          if (UiFlags.enableSellerOpenCloseToggle)
+            Padding(
+              padding: const EdgeInsets.only(top: 12.0),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.store_mall_directory,
+                    size: 16,
+                    color: Colors.black54,
+                  ),
+                  const SizedBox(width: 8),
+                  const Text('Shop Open', style: TextStyle(fontSize: 14)),
+                  const Spacer(),
+                  Switch(
+                    value:
+                        (_dashboardData['seller_extra']?['settings']?['is_open'] ??
+                            false) ==
+                        true,
+                    onChanged: (val) async {
+                      try {
+                        // Merge JSONB: extra.settings.is_open = val (client-side merge)
+                        final currentExtra = Map<String, dynamic>.from(
+                          (_dashboardData['seller_extra']
+                                  as Map<String, dynamic>?) ??
+                              {},
+                        );
+                        final settings = Map<String, dynamic>.from(
+                          (currentExtra['settings'] as Map<String, dynamic>?) ??
+                              {},
+                        );
+                        settings['is_open'] = val;
+                        currentExtra['settings'] = settings;
+
+                        final updated = await _supabaseService.updateSeller(
+                          widget.seller['id'],
+                          {'extra': currentExtra},
+                        );
+
+                        if (mounted) {
+                          setState(() {
+                            _dashboardData['seller_extra'] = updated['extra'];
+                          });
+                        }
+
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              val
+                                  ? 'Shop marked as Open'
+                                  : 'Shop marked as Closed',
+                            ),
+                            backgroundColor: const Color(0xFF059669),
+                          ),
+                        );
+                      } catch (e) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Failed to update shop status: $e'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ),
         ],
       ),
     );
@@ -626,6 +697,22 @@ class _SellerDashboardScreenState extends State<SellerDashboardScreen> {
                 Icons.add_box_outlined,
                 const Color(0xFF059669),
                 () {
+                  final isApproved =
+                      (widget.seller['approval_status']
+                          ?.toString()
+                          .toLowerCase() ==
+                      'approved');
+                  if (!isApproved) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Your account is pending approval. You can add products after approval.',
+                        ),
+                        backgroundColor: Colors.orange,
+                      ),
+                    );
+                    return;
+                  }
                   Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (context) =>
@@ -1313,6 +1400,22 @@ class _SellerDashboardScreenState extends State<SellerDashboardScreen> {
                   ),
                   TextButton(
                     onPressed: () {
+                      final isApproved =
+                          (widget.seller['approval_status']
+                              ?.toString()
+                              .toLowerCase() ==
+                          'approved');
+                      if (!isApproved) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Your account is pending approval. You can manage products after approval.',
+                            ),
+                            backgroundColor: Colors.orange,
+                          ),
+                        );
+                        return;
+                      }
                       Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (context) =>

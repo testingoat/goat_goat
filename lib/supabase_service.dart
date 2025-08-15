@@ -151,8 +151,7 @@ class SupabaseService {
     var query = _supabase.from('meat_products').select('''
           *,
           sellers(seller_name, contact_phone, business_city),
-          meat_product_images(image_url),
-          nutritional_info(*)
+          meat_product_images(image_url)
         ''');
 
     // Server-side filters

@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
 import '../widgets/product_review_widget.dart';
 import '../services/shopping_cart_service.dart';
 import 'customer_product_reviews_screen.dart';
+import 'customer_shopping_cart_screen.dart';
 
 class CustomerProductDetailsScreen extends StatefulWidget {
   final Map<String, dynamic> product;
@@ -54,7 +57,7 @@ class _CustomerProductDetailsScreenState
         actions: [
           IconButton(
             icon: const Icon(Icons.share, color: Colors.white),
-            onPressed: () {},
+            onPressed: _onShare,
             tooltip: 'Share',
           ),
           const SizedBox(width: 4),
@@ -95,7 +98,7 @@ class _CustomerProductDetailsScreenState
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           Text(
-                            _formatPrice(price, unit),
+                            _formatPrice(price, unit, showUnit: false),
                             style: TextStyle(
                               color: primaryColor,
                               fontSize: 22,
@@ -272,6 +275,15 @@ class _CustomerProductDetailsScreenState
                 ? primaryColor
                 : Colors.red,
             duration: const Duration(seconds: 2),
+            action: result['success'] == true
+                ? SnackBarAction(
+                    label: 'View Cart',
+                    textColor: Colors.white,
+                    onPressed: () {
+                      Navigator.of(context).pushNamed('/cart');
+                    },
+                  )
+                : null,
           ),
         );
       }
@@ -510,11 +522,12 @@ class _CustomerProductDetailsScreenState
     );
   }
 
-  String _formatPrice(dynamic price, String unit) {
+  String _formatPrice(dynamic price, String unit, {bool showUnit = true}) {
     final p = (price is num)
         ? price.toDouble()
         : double.tryParse(price?.toString() ?? '0') ?? 0.0;
-    return '₹${p.toStringAsFixed(p.truncateToDouble() == p ? 0 : 1)}/$unit';
+    final base = '₹${p.toStringAsFixed(p.truncateToDouble() == p ? 0 : 1)}';
+    return showUnit ? (base + '/$unit') : base;
   }
 
   String? _readUnit(Map<String, dynamic> prod) {
@@ -522,6 +535,44 @@ class _CustomerProductDetailsScreenState
       return prod['unit'];
     }
     return 'kg';
+  }
+
+  void _onShare() {
+    // Minimal, zero-risk share: copy to clipboard fallback; can be replaced with share_plus later
+    final name = widget.product['name']?.toString() ?? 'Product';
+    final price = widget.product['price'];
+    final unit = _readUnit(widget.product) ?? 'kg';
+    final text = 'Check this out: ' + name + ' — ' + _formatPrice(price, unit);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Share: ' + text),
+        action: SnackBarAction(
+          label: 'Copy',
+          onPressed: () {
+            Clipboard.setData(ClipboardData(text: text));
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(const SnackBar(content: Text('Copied')));
+          },
+        ),
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  void _showViewCartSnackbar() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Added to cart'),
+        action: SnackBarAction(
+          label: 'View Cart',
+          onPressed: () {
+            Navigator.of(context).pushNamed('/cart');
+          },
+        ),
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 }
 

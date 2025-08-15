@@ -1,11 +1,11 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../api_config.dart';
+import '../config/api_config.dart';
 
 /// SellerSyncService
 /// Zero-risk service for syncing sellers with Odoo via webhook.
 /// Follows the same pattern as product sync for consistency.
-/// 
+///
 /// Features:
 /// - Sync new sellers to Odoo for approval
 /// - Handle approval/rejection responses
@@ -24,7 +24,9 @@ class SellerSyncService {
     try {
       if (kDebugMode) {
         print('🔄 SellerSyncService: Syncing seller to Odoo for approval');
-        print('📋 SellerSyncService: Seller: ${sellerData['seller_name']} (${sellerData['id']})');
+        print(
+          '📋 SellerSyncService: Seller: ${sellerData['seller_name']} (${sellerData['id']})',
+        );
       }
 
       // Prepare webhook payload for Odoo seller creation
@@ -59,10 +61,13 @@ class SellerSyncService {
       );
 
       if (kDebugMode) {
-        print('📥 SellerSyncService: Webhook response: ${webhookResponse.data}');
+        print(
+          '📥 SellerSyncService: Webhook response: ${webhookResponse.data}',
+        );
       }
 
-      if (webhookResponse.data != null && webhookResponse.data['success'] == true) {
+      if (webhookResponse.data != null &&
+          webhookResponse.data['success'] == true) {
         return {
           'success': true,
           'message': 'Seller synced to Odoo successfully',
@@ -71,8 +76,9 @@ class SellerSyncService {
         };
       } else {
         // Webhook failed but don't fail the registration
-        final errorMessage = webhookResponse.data?['error'] ?? 'Unknown webhook error';
-        
+        final errorMessage =
+            webhookResponse.data?['error'] ?? 'Unknown webhook error';
+
         if (kDebugMode) {
           print('⚠️ SellerSyncService: Webhook failed: $errorMessage');
         }
@@ -109,7 +115,9 @@ class SellerSyncService {
     try {
       if (kDebugMode) {
         print('🔄 SellerSyncService: Processing seller approval');
-        print('📋 SellerSyncService: Seller ID: $sellerId, Approved: $isApproved');
+        print(
+          '📋 SellerSyncService: Seller ID: $sellerId, Approved: $isApproved',
+        );
       }
 
       // Prepare approval webhook payload
@@ -128,10 +136,13 @@ class SellerSyncService {
       );
 
       if (kDebugMode) {
-        print('📥 SellerSyncService: Approval response: ${webhookResponse.data}');
+        print(
+          '📥 SellerSyncService: Approval response: ${webhookResponse.data}',
+        );
       }
 
-      if (webhookResponse.data != null && webhookResponse.data['success'] == true) {
+      if (webhookResponse.data != null &&
+          webhookResponse.data['success'] == true) {
         return {
           'success': true,
           'message': webhookResponse.data['message'],
@@ -139,8 +150,9 @@ class SellerSyncService {
           'seller_name': webhookResponse.data['seller_name'],
         };
       } else {
-        final errorMessage = webhookResponse.data?['error'] ?? 'Unknown approval error';
-        
+        final errorMessage =
+            webhookResponse.data?['error'] ?? 'Unknown approval error';
+
         return {
           'success': false,
           'message': 'Approval processing failed',
@@ -166,13 +178,17 @@ class SellerSyncService {
   Future<Map<String, dynamic>> getSellerApprovalStatus(String sellerId) async {
     try {
       if (kDebugMode) {
-        print('🔍 SellerSyncService: Checking seller approval status: $sellerId');
+        print(
+          '🔍 SellerSyncService: Checking seller approval status: $sellerId',
+        );
       }
 
       // Get seller data from local database
       final sellerResponse = await _supabase
           .from('sellers')
-          .select('id, seller_name, approval_status, approved_at, rejected_at, rejection_reason')
+          .select(
+            'id, seller_name, approval_status, approved_at, rejected_at, rejection_reason',
+          )
           .eq('id', sellerId)
           .single();
 
@@ -218,7 +234,7 @@ class SellerSyncService {
 
       return {
         'success': syncResult['success'],
-        'message': syncResult['success'] 
+        'message': syncResult['success']
             ? 'Seller resent for approval successfully'
             : 'Failed to resend seller for approval',
         'sync_result': syncResult,
@@ -241,8 +257,13 @@ class SellerSyncService {
   /// Ensures all required fields are present for Odoo sync
   static String? validateSellerData(Map<String, dynamic> sellerData) {
     // Required fields for Odoo sync
-    final requiredFields = ['id', 'seller_name', 'contact_phone', 'seller_type'];
-    
+    final requiredFields = [
+      'id',
+      'seller_name',
+      'contact_phone',
+      'seller_type',
+    ];
+
     for (final field in requiredFields) {
       if (sellerData[field] == null || sellerData[field].toString().isEmpty) {
         return 'Missing required field: $field';
@@ -272,7 +293,7 @@ class SellerSyncService {
     final type = sellerData['seller_type'] ?? 'Unknown Type';
     final city = sellerData['business_city'] ?? 'Unknown City';
     final status = sellerData['approval_status'] ?? 'pending';
-    
+
     return '$name ($type) - $city - Status: ${status.toUpperCase()}';
   }
 }

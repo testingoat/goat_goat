@@ -89,7 +89,8 @@ class OdooService {
         'description': description,
         'approval_status': 'pending',
         'stock': 0, // Default stock value
-        // Note: removed default_code, is_active, created_at, updated_at as they don't exist in schema
+        // Store nutritional info and extra metadata in JSONB column
+        'extra_metadata': nutritionalInfo ?? {},
       };
 
       print('🔍 DEBUG - Database productData: $productData');
@@ -118,13 +119,7 @@ class OdooService {
         };
       }
 
-      // Add nutritional info if provided
-      if (nutritionalInfo != null) {
-        await _supabase.from('nutritional_info').insert({
-          'product_id': localProduct['id'],
-          ...nutritionalInfo,
-        });
-      }
+      // ✅ Nutritional info is now stored in the extra_metadata JSONB column above
 
       // Add product images if provided
       if (imageUrls != null && imageUrls.isNotEmpty) {
@@ -620,8 +615,10 @@ class OdooService {
       print('🔗 WEBHOOK DEBUG - Local Product: $localProduct');
       print('🔗 WEBHOOK DEBUG - Request Body: $requestBody');
 
-      // Prepare webhook payload
+      // Prepare webhook payload (V2 format)
       final webhookPayload = {
+        'payload_version':
+            'v2', // 🚀 CRITICAL FIX: Required for FORCE_V2_WEBHOOKS=true
         'product_id': localProduct['id'],
         'seller_id': localProduct['seller_id'], // UUID for database reference
         'product_type': 'meat',

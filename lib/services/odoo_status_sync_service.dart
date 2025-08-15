@@ -15,14 +15,15 @@ class OdooStatusSyncService {
 
       // Get all products that have been synced to Odoo (have odoo_product_id)
       var query = _supabase.from('meat_products').select('*');
-      
+
       if (sellerId != null) {
         query = query.eq('seller_id', sellerId);
       }
 
       final localProducts = await query;
-      
-      if (showLogs) print('🔍 ODOO SYNC - Found ${localProducts.length} local products');
+
+      if (showLogs)
+        print('🔍 ODOO SYNC - Found ${localProducts.length} local products');
 
       int syncedCount = 0;
       int updatedCount = 0;
@@ -33,20 +34,22 @@ class OdooStatusSyncService {
           // Only sync products that were successfully created in Odoo
           // We'll identify them by checking if they have a recent created_at timestamp
           // and approval_status is still pending (meaning they might be approved in Odoo)
-          
+
           if (product['approval_status'] == 'pending') {
             final syncResult = await _syncSingleProductStatus(
-              product['id'], 
+              product['id'],
               product['name'],
               showLogs: false,
             );
-            
+
             if (syncResult['success']) {
               syncedCount++;
               if (syncResult['updated']) {
                 updatedCount++;
                 if (showLogs) {
-                  print('✅ ODOO SYNC - Updated ${product['name']}: ${syncResult['old_status']} → ${syncResult['new_status']}');
+                  print(
+                    '✅ ODOO SYNC - Updated ${product['name']}: ${syncResult['old_status']} → ${syncResult['new_status']}',
+                  );
                 }
               }
             } else {
@@ -74,7 +77,6 @@ class OdooStatusSyncService {
         'errors': errors,
         'message': 'Sync completed successfully',
       };
-
     } catch (e) {
       if (showLogs) print('❌ ODOO SYNC - Error: ${e.toString()}');
       return {
@@ -87,7 +89,7 @@ class OdooStatusSyncService {
 
   /// Sync approval status for a single product from Odoo
   Future<Map<String, dynamic>> _syncSingleProductStatus(
-    String productId, 
+    String productId,
     String productName, {
     bool showLogs = true,
   }) async {
@@ -102,7 +104,7 @@ class OdooStatusSyncService {
           .single();
 
       final currentStatus = localProduct['approval_status'];
-      
+
       // Call Odoo status check webhook
       final response = await _supabase.functions.invoke(
         'odoo-status-sync',
@@ -119,12 +121,52 @@ class OdooStatusSyncService {
         final statusChanged = response.data['status_changed'] == true;
 
         if (statusChanged) {
+          // Guard against accidental auto-approval: only accept approved if evidence exists
+          if (odooStatus == 'approved') {
+            try {
+              final productCheck = await _supabase
+                  .from('meat_products')
+                  .select('odoo_product_id')
+                  .eq('id', productId)
+                  .single();
+              final hasOdooId =
+                  productCheck['odoo_product_id'] != null &&
+                  productCheck['odoo_product_id'].toString().isNotEmpty;
+              if (!hasOdooId) {
+                if (showLogs) {
+                  print(
+                    '🛡️ ODOO SYNC - Ignoring approved status without odoo_product_id for product $productName',
+                  );
+                }
+                return {
+                  'success': true,
+                  'updated': false,
+                  'status': currentStatus,
+                };
+              }
+            } catch (_) {
+              // If check fails, be conservative and do not auto-approve
+              if (showLogs) {
+                print(
+                  '🛡️ ODOO SYNC - Safety guard prevented approval due to check error for $productName',
+                );
+              }
+              return {
+                'success': true,
+                'updated': false,
+                'status': currentStatus,
+              };
+            }
+          }
+
           // Update local database with new status from Odoo
           await _supabase
               .from('meat_products')
               .update({
                 'approval_status': odooStatus,
-                'approved_at': odooStatus == 'approved' ? DateTime.now().toIso8601String() : null,
+                'approved_at': odooStatus == 'approved'
+                    ? DateTime.now().toIso8601String()
+                    : null,
                 'updated_at': DateTime.now().toIso8601String(),
               })
               .eq('id', productId);
@@ -140,23 +182,19 @@ class OdooStatusSyncService {
             'new_status': odooStatus,
           };
         } else {
-          if (showLogs) print('ℹ️ ODOO SYNC - Status unchanged: $currentStatus');
-          return {
-            'success': true,
-            'updated': false,
-            'status': currentStatus,
-          };
+          if (showLogs)
+            print('ℹ️ ODOO SYNC - Status unchanged: $currentStatus');
+          return {'success': true, 'updated': false, 'status': currentStatus};
         }
       } else {
-        throw Exception('Odoo status check failed: ${response.data?['error'] ?? 'Unknown error'}');
+        throw Exception(
+          'Odoo status check failed: ${response.data?['error'] ?? 'Unknown error'}',
+        );
       }
-
     } catch (e) {
-      if (showLogs) print('❌ ODOO SYNC - Error syncing $productName: ${e.toString()}');
-      return {
-        'success': false,
-        'error': e.toString(),
-      };
+      if (showLogs)
+        print('❌ ODOO SYNC - Error syncing $productName: ${e.toString()}');
+      return {'success': false, 'error': e.toString()};
     }
   }
 
@@ -171,11 +209,10 @@ class OdooStatusSyncService {
           .single();
 
       return await _syncSingleProductStatus(
-        productId, 
+        productId,
         product['name'],
         showLogs: true,
       );
-
     } catch (e) {
       return {
         'success': false,
@@ -200,7 +237,9 @@ class OdooStatusSyncService {
       final pendingProducts = await query;
 
       // Check if any pending products are older than 5 minutes
-      final fiveMinutesAgo = DateTime.now().subtract(const Duration(minutes: 5));
+      final fiveMinutesAgo = DateTime.now().subtract(
+        const Duration(minutes: 5),
+      );
 
       for (final product in pendingProducts) {
         final createdAt = DateTime.parse(product['created_at']);
@@ -220,7 +259,7 @@ class OdooStatusSyncService {
   Future<Map<String, dynamic>> getSyncStats({String? sellerId}) async {
     try {
       var query = _supabase.from('meat_products').select('approval_status');
-      
+
       if (sellerId != null) {
         query = query.eq('seller_id', sellerId);
       }
@@ -229,21 +268,20 @@ class OdooStatusSyncService {
 
       final stats = {
         'total': products.length,
-        'pending': products.where((p) => p['approval_status'] == 'pending').length,
-        'approved': products.where((p) => p['approval_status'] == 'approved').length,
-        'rejected': products.where((p) => p['approval_status'] == 'rejected').length,
+        'pending': products
+            .where((p) => p['approval_status'] == 'pending')
+            .length,
+        'approved': products
+            .where((p) => p['approval_status'] == 'approved')
+            .length,
+        'rejected': products
+            .where((p) => p['approval_status'] == 'rejected')
+            .length,
       };
 
-      return {
-        'success': true,
-        'stats': stats,
-      };
-
+      return {'success': true, 'stats': stats};
     } catch (e) {
-      return {
-        'success': false,
-        'error': e.toString(),
-      };
+      return {'success': false, 'error': e.toString()};
     }
   }
 }

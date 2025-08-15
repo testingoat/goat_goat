@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../supabase_service.dart';
 import '../services/odoo_service.dart';
 import '../config/ui_flags.dart';
+import '../config/feature_flags.dart';
 import '../widgets/product_image_picker_panel.dart';
 import '../services/odoo_status_sync_service.dart';
 import '../widgets/product_filter_widget.dart';
@@ -32,7 +33,21 @@ class _ProductManagementScreenState extends State<ProductManagementScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
-    _loadProducts();
+
+    // Feature-flagged auto status sync on open (zero-risk)
+    FeatureFlags.isEnabledRemote('auto_sync_status_on_open').then((
+      enabled,
+    ) async {
+      if (enabled) {
+        try {
+          await _syncService.syncAllProductStatus(
+            sellerId: widget.seller['id'],
+            showLogs: true,
+          );
+        } catch (_) {}
+      }
+      _loadProducts();
+    });
   }
 
   @override
@@ -1188,6 +1203,14 @@ class _AddProductDialogState extends State<AddProductDialog> {
   final SupabaseService _supabaseService = SupabaseService();
   final OdooService _odooService = OdooService();
   bool _isSubmitting = false;
+  String _productType = 'meat';
+  String? _meatCategory;
+  final List<String> _meatCategories = const [
+    'Chicken',
+    'Mutton',
+    'Fish',
+    'Eggs',
+  ];
 
   @override
   void dispose() {
@@ -1248,6 +1271,59 @@ class _AddProductDialogState extends State<AddProductDialog> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Product Type selector (UI-only)
+                      const Text(
+                        'Product Type',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        children: [
+                          ChoiceChip(
+                            label: const Text('Meat'),
+                            selected: _productType == 'meat',
+                            onSelected: (sel) {
+                              setState(() {
+                                _productType = 'meat';
+                              });
+                            },
+                          ),
+                          ChoiceChip(
+                            label: const Text('Livestock'),
+                            selected: _productType == 'livestock',
+                            onSelected: (sel) {
+                              setState(() {
+                                _productType = 'livestock';
+                              });
+                            },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      if (_productType == 'meat')
+                        DropdownButtonFormField<String>(
+                          value: _meatCategory,
+                          items: _meatCategories
+                              .map(
+                                (c) => DropdownMenuItem<String>(
+                                  value: c,
+                                  child: Text(c),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (v) => setState(() => _meatCategory = v),
+                          decoration: const InputDecoration(
+                            labelText: 'Meat Subcategory',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      if (_productType == 'meat') const SizedBox(height: 16),
+
                       _buildTextField(
                         controller: _nameController,
                         label: 'Product Name *',
@@ -1277,20 +1353,18 @@ class _AddProductDialogState extends State<AddProductDialog> {
                         },
                       ),
                       const SizedBox(height: 16),
-                      _buildTextField(
-                        controller: _stockController,
-                        label: 'Stock/Quantity (pieces)',
-                        hint: '0',
-                        keyboardType: TextInputType.number,
-                        validator: (value) {
-                          if (value != null && value.trim().isNotEmpty) {
-                            final stock = int.tryParse(value);
-                            if (stock == null || stock < 0) {
-                              return 'Please enter a valid quantity';
-                            }
-                          }
-                          return null;
-                        },
+                      // Quantity field removed visually (kept out to avoid confusion). Stock defaults handled server-side.
+
+                      // UOM display (read-only UI)
+                      Row(
+                        children: const [
+                          Text(
+                            'Unit of Measure: ',
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          SizedBox(width: 6),
+                          Chip(label: Text('kg')),
+                        ],
                       ),
                       const SizedBox(height: 16),
                       _buildTextField(
@@ -1516,12 +1590,20 @@ class _AddProductDialogState extends State<AddProductDialog> {
         price: double.parse(_priceController.text.trim()),
         sellerId: widget.seller['id'], // ✅ UUID for database
         sellerUid: widget.seller['id'], // ✅ UUID for Odoo
-        sellerName:
-            widget.seller['seller_name'] ?? 'Unknown Seller', // ✅ Name for Odoo
+        sellerName: widget.seller['seller_name'] ?? 'Unknown Seller',
         description: _descriptionController.text.trim().isEmpty
             ? null
             : _descriptionController.text.trim(),
         imageUrls: UiFlags.enableSellerProductImages ? _pendingImageUrls : null,
+        nutritionalInfo: {
+          // Use JSONB extension fields without schema changes
+          'extra': {
+            'product_type': _productType,
+            if (_productType == 'meat' && _meatCategory != null)
+              'meat_category': _meatCategory,
+            'uom': 'kg',
+          },
+        },
       );
 
       if (mounted) {

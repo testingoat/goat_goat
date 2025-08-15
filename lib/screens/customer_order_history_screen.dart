@@ -3,6 +3,8 @@ import '../services/order_tracking_service.dart';
 import '../config/feature_flags.dart';
 
 /// Customer Order History Screen for Phase 1.1 implementation
+import 'customer_product_catalog_screen.dart';
+
 ///
 /// This screen provides customers with a comprehensive view of their order history
 /// and tracking information using the existing emerald theme and design patterns.
@@ -249,7 +251,15 @@ class _CustomerOrderHistoryScreenState
             ),
             const SizedBox(height: 24),
             ElevatedButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () {
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(
+                    builder: (context) => CustomerProductCatalogScreen(
+                      customer: widget.customer ?? {},
+                    ),
+                  ),
+                );
+              },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green[600],
                 foregroundColor: Colors.white,

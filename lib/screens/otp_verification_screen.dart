@@ -7,6 +7,8 @@ import '../services/fcm_service.dart';
 import '../services/auth_service.dart';
 import 'seller_dashboard_screen.dart';
 
+import '../services/seller_sync_service.dart';
+
 class OTPVerificationScreen extends StatefulWidget {
   final String phoneNumber;
   final String purpose; // 'registration' or 'login'
@@ -142,9 +144,16 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
     );
 
     if (result['success']) {
+      // Fire-and-forget seller sync to Odoo for approval (non-blocking)
+      try {
+        // Import is at top of file; do not block navigation on failure
+        // ignore: unawaited_futures
+        SellerSyncService().syncSellerToOdoo(result['seller']);
+      } catch (_) {}
+
       _navigateToDashboard(
         result['seller'],
-        'Registration successful! Welcome to GoatGoat.',
+        'Registration successful! Your account is pending approval.',
       );
     } else {
       setState(() {

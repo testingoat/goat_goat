@@ -37,4 +37,16 @@ class UiFlags {
 
   // New: optional seller product images panel (UI only)
   static const bool enableSellerProductImages = true;
+
+  // New: feature-flagged seller open/close toggle on dashboard (UI + JSONB persist)
+  static const bool enableSellerOpenCloseToggle = false;
+
+  // New: feature-flagged seller login bottom sheet (keyboard-safe) instead of dialog
+  static const bool enableSellerLoginBottomSheet = false;
+
+  // New: feature-flagged dedicated customer profile & addresses screens
+  static const bool enableCustomerProfileScreens = false;
+
+  // New: enable share action on product details (uses clipboard fallback if share_plus missing)
+  static const bool enableProductShareAction = true; // UI-only, safe default
 }

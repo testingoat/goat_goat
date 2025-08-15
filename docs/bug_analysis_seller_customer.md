@@ -14,6 +14,11 @@ Author: Custom AI Agent (GPT‑5 based) • Date: 2025‑08‑14
 ## SELLER PORTAL
 
 ### 1) Shop Open/Close Status – Missing/Unwired (Bug)
+- Status: Done
+- Files: seller_dashboard_screen.dart, config/ui_flags.dart
+- Implementation: Feature-flagged toggle (UiFlags.enableSellerOpenCloseToggle) added in Seller Dashboard; persists to sellers.extra.settings.is_open via SupabaseService.updateSeller; UI chip with Switch.
+- Verification: Toggle updates JSONB and shows SnackBar; default flag is false so no behavior change until enabled.
+
 - Observed: No explicit is_open field usage surfaced in UI; not found in SupabaseService search. Dashboard shows status badges for seller approval/product approval but not shop open/closed.
 - Files: seller_dashboard_screen.dart, supabase_service.dart (no is_open API)
 - Impact: Sellers can’t mark shop availability; Customer ETA/availability may mislead.

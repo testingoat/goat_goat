@@ -62,9 +62,21 @@ serve(async (req) => {
       );
     }
 
+    const url = new URL(req.url);
+    const dryRun = url.searchParams.get('dryRun') === 'true';
+
     // Parse request body
-    const payload: SellerSyncPayload = await req.json();
+    const payload: SellerSyncPayload & { payload_version?: 'v1' | 'v2' } = await req.json();
     console.log('📋 Payload received:', JSON.stringify(payload, null, 2));
+
+    const forceV2 = (Deno.env.get('FORCE_V2_WEBHOOKS') === 'true');
+    const payloadVersion = payload.payload_version || 'v1';
+    if (forceV2 && payloadVersion !== 'v2') {
+      return new Response(JSON.stringify({ error: 'Only v2 payloads are accepted on this endpoint' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400,
+      });
+    }
 
     // Validate required fields
     if (!payload.seller_id || !payload.seller_name || !payload.contact_phone || !payload.seller_type) {
@@ -82,7 +94,7 @@ serve(async (req) => {
 
     // Create seller in Odoo
     console.log('🔄 Creating seller in Odoo...');
-    const odooSellerId = await createSellerInOdoo(payload);
+    const odooSellerId = await createSellerInOdoo(payload, dryRun);
     console.log('✅ Seller created in Odoo with ID:', odooSellerId);
 
     // Initialize Supabase client for any database updates if needed
@@ -146,78 +158,70 @@ serve(async (req) => {
  * Create seller in Odoo ERP system
  * Creates a res.partner record with supplier_rank=1 for seller approval
  */
-async function createSellerInOdoo(payload: SellerSyncPayload): Promise<number> {
-  console.log('🔄 Creating seller in Odoo:', payload.seller_name);
+async function createSellerInOdoo(payload: SellerSyncPayload, dryRun?: boolean): Promise<number> {
+  console.log('🔄 Creating seller in Odoo (direct auth):', payload.seller_name);
+  console.log('🧪 DryRun:', !!dryRun);
 
-  // Prepare Odoo seller data (res.partner model)
+  // Odoo connection
+  const odooUrl = Deno.env.get('ODOO_URL') || 'https://goatgoat.xyz/';
+  const odooDb = Deno.env.get('ODOO_DB') || 'staging';
+  const odooUsername = Deno.env.get('ODOO_USERNAME') || 'admin';
+  const odooPassword = Deno.env.get('ODOO_PASSWORD') || 'admin';
+
+  // 1) Authenticate
+  const authResponse = await fetch(`${odooUrl}/web/session/authenticate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      jsonrpc: '2.0', method: 'call', params: { db: odooDb, login: odooUsername, password: odooPassword }, id: Math.random()
+    })
+  });
+  const authJson = await authResponse.json();
+  if (!authJson?.result?.uid) throw new Error(`Odoo auth failed: ${JSON.stringify(authJson)}`);
+  const sessionCookie = authResponse.headers.get('set-cookie') || '';
+
+  // 2) Duplicate check by ref
+  const ref = payload.seller_id;
+  const searchBody = { jsonrpc: '2.0', method: 'call', params: { model: 'res.partner', method: 'search', args: [[[ 'ref', '=', ref ]]], kwargs: {} }, id: Math.random() };
+  const searchRes = await fetch(`${odooUrl}/web/dataset/call_kw`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Cookie': sessionCookie }, body: JSON.stringify(searchBody) });
+  const searchJson = await searchRes.json();
+  if (Array.isArray(searchJson?.result) && searchJson.result.length > 0) {
+    const existingId = searchJson.result[0];
+    console.log('♻️ Seller already exists in Odoo (by ref), id:', existingId);
+    return existingId;
+  }
+
+  // 3) New payload shape
+  const companyType: 'person' | 'company' = (payload as any).company_type === 'person' || (payload as any).company_type === 'company' ? (payload as any).company_type : 'company';
   const odooSellerData = {
     name: payload.seller_name,
-    phone: payload.contact_phone,
-    email: null, // Email not required for sellers
-    is_company: true, // Sellers are businesses
-    supplier_rank: 1, // Mark as supplier (this puts them in supplier approval queue)
-    customer_rank: 0, // Not a customer
-    category_id: [[6, false, [1]]], // Default category
+    company_type: companyType,
+    seller_type: payload.seller_type,
+    ref,
+    supplier_rank: 1,
+    customer_rank: 0,
+    mobile: payload.contact_phone || '',
+    email: (payload as any).email || null,
+    state: 'pending',
     street: payload.business_address || '',
     city: payload.business_city || '',
     zip: payload.business_pincode || '',
-    country_id: 104, // India country ID in Odoo
-    state_id: false, // Will be set based on city if needed
-    vat: payload.gstin || '', // GST number
-    // Custom fields for seller-specific data (these need to be created in Odoo)
-    x_seller_type: payload.seller_type,
-    x_fssai_license: payload.fssai_license || '',
-    x_bank_account: payload.bank_account_number || '',
-    x_ifsc_code: payload.ifsc_code || '',
-    x_account_holder: payload.account_holder_name || '',
-    x_aadhaar: payload.aadhaar_number || '',
-    x_goat_seller_id: payload.seller_id, // Link back to Supabase
-    x_approval_status: 'pending', // Custom field for approval tracking
-    active: true, // Active record
-    comment: `Seller registered via GoatGoat app on ${payload.created_at}`,
+    active: true,
   };
 
-  console.log('📋 Odoo seller data prepared');
+  // 4) Create
+  const createBody = { jsonrpc: '2.0', method: 'call', params: { model: 'res.partner', method: 'create', args: [odooSellerData], kwargs: {} }, id: Math.random() };
 
-  // Call Odoo API proxy to create seller
-  const odooResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/odoo-api-proxy`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': Deno.env.get('WEBHOOK_API_KEY')!,
-    },
-    body: JSON.stringify({
-      odoo_endpoint: '/web/dataset/call_kw/res.partner/create',
-      data: {
-        model: 'res.partner',
-        method: 'create',
-        args: [odooSellerData],
-        kwargs: {}
-      }
-    })
-  });
-
-  if (!odooResponse.ok) {
-    const errorText = await odooResponse.text();
-    console.log('❌ Odoo API proxy error:', errorText);
-    throw new Error(`Odoo API proxy failed: ${odooResponse.status} - ${errorText}`);
+  if (dryRun) {
+    console.log('🧪 DRY RUN - res.partner.create payload:', JSON.stringify(createBody));
+    return 0;
   }
 
-  const odooResult = await odooResponse.json();
-  console.log('📋 Odoo API response received');
-
-  if (odooResult.error) {
-    console.log('❌ Odoo seller creation error:', odooResult.error);
-    throw new Error(`Odoo seller creation failed: ${odooResult.error}`);
-  }
-
-  // Extract seller ID from response
-  const sellerId = odooResult.result || odooResult.data?.result;
-  if (!sellerId) {
-    console.log('❌ No seller ID returned from Odoo');
-    throw new Error('No seller ID returned from Odoo');
-  }
-
+  const createRes = await fetch(`${odooUrl}/web/dataset/call_kw`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Cookie': sessionCookie }, body: JSON.stringify(createBody) });
+  const createJson = await createRes.json();
+  if (createJson?.error) throw new Error(`Odoo seller creation failed: ${JSON.stringify(createJson.error)}`);
+  const sellerId = createJson?.result;
+  if (!sellerId) throw new Error('No seller ID returned from Odoo');
   console.log('✅ Seller created in Odoo with ID:', sellerId);
   return sellerId;
 }
