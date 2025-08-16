@@ -130,52 +130,128 @@ class _DebugPanelScreenState extends State<DebugPanelScreen>
   }
 
   Future<void> _loadTrafficData() async {
-    final result = await _debugService.getEdgeFunctionLogs(
-      page: _currentPage,
-      limit: _pageSize,
-      endpoint: _selectedEndpoint,
-      statusCode: _selectedStatusCode,
-      startDate: _startDate,
-      endDate: _endDate,
-      searchQuery: _searchQuery.isNotEmpty ? _searchQuery : null,
-    );
-
-    if (result['success']) {
-      setState(() {
-        _trafficData = result;
-      });
+    if (kDebugMode) {
+      print('🔍 DEBUG_PANEL_SCREEN - Loading traffic data with filters:');
+      print('  - page: $_currentPage, limit: $_pageSize');
+      print('  - endpoint: $_selectedEndpoint');
+      print('  - statusCode: $_selectedStatusCode');
+      print('  - startDate: $_startDate');
+      print('  - endDate: $_endDate');
+      print(
+        '  - searchQuery: ${_searchQuery.isNotEmpty ? _searchQuery : 'null'}',
+      );
     }
 
-    // Also load endpoint statistics
-    final statsResult = await _debugService.getEndpointStatistics();
-    if (statsResult['success']) {
+    try {
+      final result = await _debugService.getEdgeFunctionLogs(
+        page: _currentPage,
+        limit: _pageSize,
+        endpoint: _selectedEndpoint,
+        statusCode: _selectedStatusCode,
+        startDate: _startDate,
+        endDate: _endDate,
+        searchQuery: _searchQuery.isNotEmpty ? _searchQuery : null,
+      );
+
+      if (kDebugMode) {
+        print('🔍 DEBUG_PANEL_SCREEN - Traffic data result:');
+        print('  - success: ${result['success']}');
+        print('  - data length: ${(result['data'] as List?)?.length ?? 0}');
+        print('  - error: ${result['error'] ?? 'none'}');
+      }
+
+      if (result['success']) {
+        setState(() {
+          _trafficData = result;
+        });
+      } else {
+        if (kDebugMode) {
+          print(
+            '❌ DEBUG_PANEL_SCREEN - Failed to load traffic data: ${result['error']}',
+          );
+        }
+        setState(() {
+          _trafficData = {
+            'success': false,
+            'error': result['error'],
+            'data': [],
+          };
+        });
+      }
+
+      // Also load endpoint statistics
+      final statsResult = await _debugService.getEndpointStatistics();
+      if (statsResult['success']) {
+        setState(() {
+          _trafficData['statistics'] = statsResult['data'];
+        });
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ DEBUG_PANEL_SCREEN - Exception loading traffic data: $e');
+      }
       setState(() {
-        _trafficData['statistics'] = statsResult['data'];
+        _trafficData = {'success': false, 'error': e.toString(), 'data': []};
       });
     }
   }
 
   Future<void> _loadSessionData() async {
-    final sessionResult = await _debugService.getOdooSessionLogs();
-    final flagsResult = await _debugService.getFeatureFlagStates();
-    final userAgentResult = await _debugService.getUserAgentBreakdown();
-
-    if (sessionResult['success']) {
-      setState(() {
-        _sessionData = sessionResult;
-      });
+    if (kDebugMode) {
+      print('🔍 DEBUG_PANEL_SCREEN - Loading session data...');
     }
 
-    if (flagsResult['success']) {
-      setState(() {
-        _sessionData['flags'] = flagsResult['data'];
-      });
-    }
+    try {
+      final sessionResult = await _debugService.getOdooSessionLogs();
+      final flagsResult = await _debugService.getFeatureFlagStates();
+      final userAgentResult = await _debugService.getUserAgentBreakdown();
 
-    if (userAgentResult['success']) {
-      setState(() {
-        _sessionData['user_agents'] = userAgentResult['data'];
-      });
+      if (kDebugMode) {
+        print('🔍 DEBUG_PANEL_SCREEN - Session data results:');
+        print('  - session success: ${sessionResult['success']}');
+        print('  - flags success: ${flagsResult['success']}');
+        print('  - user agents success: ${userAgentResult['success']}');
+      }
+
+      if (sessionResult['success']) {
+        setState(() {
+          _sessionData = sessionResult;
+        });
+      } else {
+        if (kDebugMode) {
+          print(
+            '❌ DEBUG_PANEL_SCREEN - Session data failed: ${sessionResult['error']}',
+          );
+        }
+      }
+
+      if (flagsResult['success']) {
+        setState(() {
+          _sessionData['flags'] = flagsResult['data'];
+        });
+      } else {
+        if (kDebugMode) {
+          print(
+            '❌ DEBUG_PANEL_SCREEN - Flags data failed: ${flagsResult['error']}',
+          );
+        }
+      }
+
+      if (userAgentResult['success']) {
+        setState(() {
+          _sessionData['user_agents'] = userAgentResult['data'];
+        });
+      } else {
+        if (kDebugMode) {
+          print(
+            '❌ DEBUG_PANEL_SCREEN - User agents data failed: ${userAgentResult['error']}',
+          );
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ DEBUG_PANEL_SCREEN - Exception loading session data: $e');
+      }
     }
   }
 
@@ -279,6 +355,16 @@ class _DebugPanelScreenState extends State<DebugPanelScreen>
             ],
           ),
           const Spacer(),
+          ElevatedButton.icon(
+            onPressed: _testDatabaseConnection,
+            icon: const Icon(Icons.bug_report, size: 18),
+            label: const Text('Test DB'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue[600],
+              foregroundColor: Colors.white,
+            ),
+          ),
+          const SizedBox(width: 8),
           ElevatedButton.icon(
             onPressed: _refreshCurrentTab,
             icon: const Icon(Icons.refresh, size: 18),
@@ -445,6 +531,59 @@ class _DebugPanelScreenState extends State<DebugPanelScreen>
 
   void _refreshCurrentTab() {
     _loadTabData(_tabController.index);
+  }
+
+  Future<void> _testDatabaseConnection() async {
+    if (kDebugMode) {
+      print('🔍 DEBUG_PANEL_SCREEN - Testing database connection...');
+    }
+
+    try {
+      final result = await _debugService.testDatabaseConnection();
+
+      if (kDebugMode) {
+        print('🔍 DEBUG_PANEL_SCREEN - Database test result: $result');
+      }
+
+      // Show result in a dialog
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text(
+              result['success'] ? '✅ Database Test' : '❌ Database Test',
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Status: ${result['success'] ? 'SUCCESS' : 'FAILED'}'),
+                const SizedBox(height: 8),
+                Text('Message: ${result['message']}'),
+                if (result['error'] != null) ...[
+                  const SizedBox(height: 8),
+                  Text('Error: ${result['error']}'),
+                ],
+                if (result['sample_data'] != null) ...[
+                  const SizedBox(height: 8),
+                  Text('Sample Data: ${result['sample_data']}'),
+                ],
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ DEBUG_PANEL_SCREEN - Database test exception: $e');
+      }
+    }
   }
 
   // Traffic Explorer Implementation

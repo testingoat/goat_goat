@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'supabase_logs_service.dart';
 import 'feature_flag_service.dart';
 import 'anomaly_detection_service.dart';
 
@@ -11,6 +12,7 @@ class DebugPanelService {
   DebugPanelService._internal();
 
   final SupabaseClient _supabase = Supabase.instance.client;
+  final SupabaseLogsService _supabaseLogsService = SupabaseLogsService();
 
   // Feature flag for debug panel
   static const bool _enableDebugPanel = true; // Feature flag
@@ -21,6 +23,41 @@ class DebugPanelService {
   // =====================================================
   // TRAFFIC EXPLORER METHODS
   // =====================================================
+
+  /// Test database connectivity and basic functionality
+  Future<Map<String, dynamic>> testDatabaseConnection() async {
+    try {
+      if (kDebugMode) {
+        print('🔍 DEBUG_PANEL_SERVICE - Testing database connection...');
+      }
+
+      // Test basic query
+      final testResponse = await _supabase
+          .from('edge_function_logs')
+          .select('id, endpoint, ts')
+          .limit(1);
+
+      if (kDebugMode) {
+        print('✅ DEBUG_PANEL_SERVICE - Database test successful:');
+        print('  - Response: $testResponse');
+      }
+
+      return {
+        'success': true,
+        'message': 'Database connection working',
+        'sample_data': testResponse,
+      };
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ DEBUG_PANEL_SERVICE - Database test failed: $e');
+      }
+      return {
+        'success': false,
+        'error': e.toString(),
+        'message': 'Database connection failed',
+      };
+    }
+  }
 
   /// Get edge function logs with filtering and pagination
   Future<Map<String, dynamic>> getEdgeFunctionLogs({
@@ -34,7 +71,11 @@ class DebugPanelService {
   }) async {
     try {
       if (kDebugMode) {
-        print('🔍 DEBUG_PANEL - Fetching edge function logs...');
+        print('🔍 DEBUG_PANEL_SERVICE - Fetching edge function logs...');
+        print(
+          '  - Filters: endpoint=$endpoint, status=$statusCode, start=$startDate, end=$endDate',
+        );
+        print('  - Pagination: page=$page, limit=$limit');
       }
 
       // Build query with filters
@@ -43,18 +84,28 @@ class DebugPanelService {
       // Apply filters
       if (endpoint != null && endpoint.isNotEmpty) {
         queryBuilder = queryBuilder.eq('endpoint', endpoint);
+        if (kDebugMode) print('  - Applied endpoint filter: $endpoint');
       }
 
       if (statusCode != null) {
         queryBuilder = queryBuilder.eq('status', statusCode);
+        if (kDebugMode) print('  - Applied status filter: $statusCode');
       }
 
       if (startDate != null) {
         queryBuilder = queryBuilder.gte('ts', startDate.toIso8601String());
+        if (kDebugMode) {
+          print(
+            '  - Applied start date filter: ${startDate.toIso8601String()}',
+          );
+        }
       }
 
       if (endDate != null) {
         queryBuilder = queryBuilder.lte('ts', endDate.toIso8601String());
+        if (kDebugMode) {
+          print('  - Applied end date filter: ${endDate.toIso8601String()}');
+        }
       }
 
       // Apply search in request/response (simplified - skip for now)
@@ -62,6 +113,12 @@ class DebugPanelService {
 
       // Apply pagination and ordering
       final offset = (page - 1) * limit;
+      if (kDebugMode) {
+        print(
+          '  - Applying pagination: offset=$offset, range=$offset-${offset + limit - 1}',
+        );
+      }
+
       final response = await queryBuilder
           .order('ts', ascending: false)
           .range(offset, offset + limit - 1);
@@ -93,9 +150,16 @@ class DebugPanelService {
       final totalCount = countResponse.length;
 
       if (kDebugMode) {
-        print(
-          '✅ DEBUG_PANEL - Found ${response.length} logs (total: $totalCount)',
-        );
+        print('✅ DEBUG_PANEL_SERVICE - Query executed successfully:');
+        print('  - Response length: ${response.length}');
+        print('  - Total count: $totalCount');
+        print('  - Response type: ${response.runtimeType}');
+        if (response.isNotEmpty) {
+          print(
+            '  - First item keys: ${(response.first as Map).keys.toList()}',
+          );
+          print('  - Sample data: ${response.first}');
+        }
       }
 
       return {
@@ -936,6 +1000,213 @@ class DebugPanelService {
         print('❌ DEBUG_PANEL - Error analyzing traffic patterns: $e');
       }
       return {'success': false, 'error': e.toString(), 'data': {}};
+    }
+  }
+
+  /// Get comprehensive traffic logs combining custom logs and Supabase native logs
+  /// This provides a unified view of all system activity
+  Future<Map<String, dynamic>> getComprehensiveTrafficLogs({
+    int page = 1,
+    int limit = 50,
+    String? endpoint,
+    int? statusCode,
+    DateTime? startDate,
+    DateTime? endDate,
+    String? searchQuery,
+  }) async {
+    try {
+      if (kDebugMode) {
+        print('🔍 DEBUG_PANEL - Fetching comprehensive traffic logs...');
+      }
+
+      // Get both custom logs and Supabase native logs in parallel
+      final futures = await Future.wait([
+        // Custom edge function logs from our table
+        getEdgeFunctionLogs(
+          page: page,
+          limit: limit ~/ 2, // Split the limit
+          endpoint: endpoint,
+          statusCode: statusCode,
+          startDate: startDate,
+          endDate: endDate,
+          searchQuery: searchQuery,
+        ),
+        // Supabase native logs
+        _supabaseLogsService.getEdgeFunctionLogs(
+          startTime:
+              startDate ?? DateTime.now().subtract(const Duration(hours: 1)),
+          endTime: endDate ?? DateTime.now(),
+          limit: limit ~/ 2, // Split the limit
+        ),
+      ]);
+
+      final customLogs = futures[0];
+      final nativeLogs = futures[1];
+
+      // Combine and merge the logs
+      final List<Map<String, dynamic>> combinedLogs = [];
+
+      // Add custom logs
+      if (customLogs['success'] == true) {
+        final logs = customLogs['data'] as List;
+        for (final log in logs) {
+          combinedLogs.add({
+            ...log,
+            'source': 'custom_logging',
+            'log_type': 'edge_function_custom',
+          });
+        }
+      }
+
+      // Add native logs
+      if (nativeLogs['success'] == true) {
+        final logs = nativeLogs['data'] as List;
+        for (final log in logs) {
+          combinedLogs.add({
+            ...log,
+            'source': 'supabase_native',
+            'log_type': 'edge_function_native',
+          });
+        }
+      }
+
+      // Sort by timestamp (most recent first)
+      combinedLogs.sort((a, b) {
+        final aTime =
+            DateTime.tryParse(a['timestamp'] ?? a['ts'] ?? '') ??
+            DateTime.now();
+        final bTime =
+            DateTime.tryParse(b['timestamp'] ?? b['ts'] ?? '') ??
+            DateTime.now();
+        return bTime.compareTo(aTime);
+      });
+
+      // Apply limit to combined results
+      final limitedLogs = combinedLogs.take(limit).toList();
+
+      return {
+        'success': true,
+        'data': limitedLogs,
+        'total': limitedLogs.length,
+        'custom_logs_available': customLogs['success'] == true,
+        'native_logs_available': nativeLogs['success'] == true,
+        'supabase_logs_configured': _supabaseLogsService.isConfigured,
+      };
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ DEBUG_PANEL - Error fetching comprehensive logs: $e');
+      }
+      return {'success': false, 'error': e.toString(), 'data': []};
+    }
+  }
+
+  /// Get Supabase native system logs (database, API gateway, etc.)
+  Future<Map<String, dynamic>> getSupabaseSystemLogs({
+    DateTime? startTime,
+    DateTime? endTime,
+    int limit = 100,
+  }) async {
+    try {
+      if (kDebugMode) {
+        print('🔍 DEBUG_PANEL - Fetching Supabase system logs...');
+      }
+
+      if (!_supabaseLogsService.isConfigured) {
+        return {
+          'success': false,
+          'error':
+              'Supabase Management API not configured. Set SUPABASE_MANAGEMENT_TOKEN environment variable.',
+          'data': [],
+          'configuration_required': true,
+        };
+      }
+
+      // Get comprehensive system logs from Supabase
+      final result = await _supabaseLogsService.getSystemLogs(
+        startTime:
+            startTime ?? DateTime.now().subtract(const Duration(hours: 1)),
+        endTime: endTime ?? DateTime.now(),
+        limit: limit,
+      );
+
+      return {...result, 'source': 'supabase_native'};
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ DEBUG_PANEL - Error fetching Supabase system logs: $e');
+      }
+      return {'success': false, 'error': e.toString(), 'data': []};
+    }
+  }
+
+  /// Get database-specific logs from Supabase native logging
+  Future<Map<String, dynamic>> getSupabaseDatabaseLogs({
+    DateTime? startTime,
+    DateTime? endTime,
+    int limit = 100,
+  }) async {
+    try {
+      if (kDebugMode) {
+        print('🔍 DEBUG_PANEL - Fetching Supabase database logs...');
+      }
+
+      if (!_supabaseLogsService.isConfigured) {
+        return {
+          'success': false,
+          'error': 'Supabase Management API not configured',
+          'data': [],
+          'configuration_required': true,
+        };
+      }
+
+      final result = await _supabaseLogsService.getDatabaseLogs(
+        startTime:
+            startTime ?? DateTime.now().subtract(const Duration(hours: 1)),
+        endTime: endTime ?? DateTime.now(),
+        limit: limit,
+      );
+
+      return {...result, 'source': 'supabase_native'};
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ DEBUG_PANEL - Error fetching database logs: $e');
+      }
+      return {'success': false, 'error': e.toString(), 'data': []};
+    }
+  }
+
+  /// Get API Gateway logs from Supabase native logging
+  Future<Map<String, dynamic>> getSupabaseApiLogs({
+    DateTime? startTime,
+    DateTime? endTime,
+    int limit = 100,
+  }) async {
+    try {
+      if (kDebugMode) {
+        print('🔍 DEBUG_PANEL - Fetching Supabase API logs...');
+      }
+
+      if (!_supabaseLogsService.isConfigured) {
+        return {
+          'success': false,
+          'error': 'Supabase Management API not configured',
+          'data': [],
+          'configuration_required': true,
+        };
+      }
+
+      final result = await _supabaseLogsService.getApiGatewayLogs(
+        startTime:
+            startTime ?? DateTime.now().subtract(const Duration(hours: 1)),
+        endTime: endTime ?? DateTime.now(),
+        limit: limit,
+      );
+
+      return {...result, 'source': 'supabase_native'};
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ DEBUG_PANEL - Error fetching API logs: $e');
+      }
+      return {'success': false, 'error': e.toString(), 'data': []};
     }
   }
 }
