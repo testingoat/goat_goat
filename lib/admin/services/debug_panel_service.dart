@@ -20,6 +20,49 @@ class DebugPanelService {
   /// Check if debug panel is available
   bool get isAvailable => _enableDebugPanel;
 
+  /// Check authentication status and permissions
+  Future<Map<String, dynamic>> checkAuthenticationStatus() async {
+    try {
+      final user = _supabase.auth.currentUser;
+      final session = _supabase.auth.currentSession;
+
+      if (kDebugMode) {
+        print('🔍 DEBUG_PANEL_SERVICE - Checking authentication...');
+        print('  - User ID: ${user?.id ?? 'null'}');
+        print('  - User email: ${user?.email ?? 'null'}');
+        print('  - Session valid: ${session != null}');
+        print('  - Session expires: ${session?.expiresAt ?? 'null'}');
+      }
+
+      // Test a simple query to check permissions
+      final testQuery = await _supabase
+          .from('edge_function_logs')
+          .select('count(*)')
+          .limit(1);
+
+      return {
+        'success': true,
+        'authenticated': user != null,
+        'user_id': user?.id,
+        'user_email': user?.email,
+        'session_valid': session != null,
+        'session_expires_at': session?.expiresAt,
+        'can_query_logs': true,
+        'test_query_result': testQuery,
+      };
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ DEBUG_PANEL_SERVICE - Auth check failed: $e');
+      }
+      return {
+        'success': false,
+        'error': e.toString(),
+        'authenticated': false,
+        'can_query_logs': false,
+      };
+    }
+  }
+
   // =====================================================
   // TRAFFIC EXPLORER METHODS
   // =====================================================
@@ -29,6 +72,9 @@ class DebugPanelService {
     try {
       if (kDebugMode) {
         print('🔍 DEBUG_PANEL_SERVICE - Testing database connection...');
+        print('  - Supabase client initialized: ${_supabase.toString()}');
+        print('  - Auth user: ${_supabase.auth.currentUser?.id ?? 'null'}');
+        print('  - Auth session: ${_supabase.auth.currentSession != null}');
       }
 
       // Test basic query
@@ -40,21 +86,29 @@ class DebugPanelService {
       if (kDebugMode) {
         print('✅ DEBUG_PANEL_SERVICE - Database test successful:');
         print('  - Response: $testResponse');
+        print('  - Response type: ${testResponse.runtimeType}');
+        print('  - Response length: ${testResponse.length}');
       }
 
       return {
         'success': true,
         'message': 'Database connection working',
         'sample_data': testResponse,
+        'auth_user_id': _supabase.auth.currentUser?.id,
+        'auth_session_valid': _supabase.auth.currentSession != null,
       };
     } catch (e) {
       if (kDebugMode) {
         print('❌ DEBUG_PANEL_SERVICE - Database test failed: $e');
+        print('  - Error type: ${e.runtimeType}');
+        print('  - Auth user: ${_supabase.auth.currentUser?.id ?? 'null'}');
       }
       return {
         'success': false,
         'error': e.toString(),
         'message': 'Database connection failed',
+        'auth_user_id': _supabase.auth.currentUser?.id,
+        'auth_session_valid': _supabase.auth.currentSession != null,
       };
     }
   }
@@ -76,6 +130,10 @@ class DebugPanelService {
           '  - Filters: endpoint=$endpoint, status=$statusCode, start=$startDate, end=$endDate',
         );
         print('  - Pagination: page=$page, limit=$limit');
+        print('  - Auth user: ${_supabase.auth.currentUser?.id ?? 'null'}');
+        print(
+          '  - Auth session valid: ${_supabase.auth.currentSession != null}',
+        );
       }
 
       // Build query with filters

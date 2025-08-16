@@ -356,11 +356,31 @@ class _DebugPanelScreenState extends State<DebugPanelScreen>
           ),
           const Spacer(),
           ElevatedButton.icon(
+            onPressed: _testAuthentication,
+            icon: const Icon(Icons.security, size: 18),
+            label: const Text('Test Auth'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.purple[600],
+              foregroundColor: Colors.white,
+            ),
+          ),
+          const SizedBox(width: 8),
+          ElevatedButton.icon(
             onPressed: _testDatabaseConnection,
             icon: const Icon(Icons.bug_report, size: 18),
             label: const Text('Test DB'),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.blue[600],
+              foregroundColor: Colors.white,
+            ),
+          ),
+          const SizedBox(width: 8),
+          ElevatedButton.icon(
+            onPressed: _forceReloadTrafficData,
+            icon: const Icon(Icons.refresh_outlined, size: 18),
+            label: const Text('Force Reload'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.orange[600],
               foregroundColor: Colors.white,
             ),
           ),
@@ -531,6 +551,104 @@ class _DebugPanelScreenState extends State<DebugPanelScreen>
 
   void _refreshCurrentTab() {
     _loadTabData(_tabController.index);
+  }
+
+  Future<void> _forceReloadTrafficData() async {
+    if (kDebugMode) {
+      print('🔍 DEBUG_PANEL_SCREEN - Force reloading traffic data...');
+      print('  - Current _trafficData state: $_trafficData');
+      print(
+        '  - Current filters: endpoint=$_selectedEndpoint, status=$_selectedStatusCode',
+      );
+      print('  - Current pagination: page=$_currentPage, limit=$_pageSize');
+    }
+
+    // Clear current data
+    setState(() {
+      _trafficData = {};
+    });
+
+    // Force reload with detailed logging
+    await _loadTrafficData();
+
+    if (kDebugMode) {
+      print('🔍 DEBUG_PANEL_SCREEN - Force reload completed:');
+      print('  - New _trafficData state: $_trafficData');
+      print(
+        '  - Data array length: ${(_trafficData['data'] as List?)?.length ?? 0}',
+      );
+    }
+  }
+
+  Future<void> _testAuthentication() async {
+    if (kDebugMode) {
+      print('🔍 DEBUG_PANEL_SCREEN - Testing authentication...');
+    }
+
+    try {
+      final result = await _debugService.checkAuthenticationStatus();
+
+      if (kDebugMode) {
+        print('🔍 DEBUG_PANEL_SCREEN - Authentication test result: $result');
+      }
+
+      // Show result in a dialog
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text(
+              result['success']
+                  ? '✅ Authentication Test'
+                  : '❌ Authentication Test',
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Status: ${result['success'] ? 'SUCCESS' : 'FAILED'}'),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Authenticated: ${result['authenticated'] ?? 'unknown'}',
+                  ),
+                  const SizedBox(height: 8),
+                  Text('User ID: ${result['user_id'] ?? 'null'}'),
+                  const SizedBox(height: 8),
+                  Text('User Email: ${result['user_email'] ?? 'null'}'),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Session Valid: ${result['session_valid'] ?? 'unknown'}',
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Can Query Logs: ${result['can_query_logs'] ?? 'unknown'}',
+                  ),
+                  if (result['error'] != null) ...[
+                    const SizedBox(height: 8),
+                    Text('Error: ${result['error']}'),
+                  ],
+                  if (result['test_query_result'] != null) ...[
+                    const SizedBox(height: 8),
+                    Text('Test Query: ${result['test_query_result']}'),
+                  ],
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ DEBUG_PANEL_SCREEN - Authentication test exception: $e');
+      }
+    }
   }
 
   Future<void> _testDatabaseConnection() async {
