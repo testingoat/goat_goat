@@ -1,0 +1,601 @@
+[
+  {
+    "id": "TC001",
+    "title": "OTP Authentication Success with Valid Phone Number",
+    "description": "Verify that the OTP is successfully sent and verified when the user provides a valid phone number and enters the correct OTP within 5 minutes.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the login screen."
+      },
+      {
+        "type": "action",
+        "description": "Enter a valid phone number."
+      },
+      {
+        "type": "action",
+        "description": "Request an OTP."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify that an OTP is sent via SMS (Fast2SMS) and push notification (FCM) respecting user preferences."
+      },
+      {
+        "type": "action",
+        "description": "Enter the correct OTP within 5 minutes."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify that the user is logged in and the session is persisted."
+      }
+    ]
+  },
+  {
+    "id": "TC002",
+    "title": "OTP Authentication Failure with Invalid OTP",
+    "description": "Ensure that login fails when the user enters an expired or incorrect OTP.",
+    "category": "error handling",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the login screen."
+      },
+      {
+        "type": "action",
+        "description": "Enter a valid phone number."
+      },
+      {
+        "type": "action",
+        "description": "Request an OTP."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify that an OTP is sent."
+      },
+      {
+        "type": "action",
+        "description": "Enter an incorrect or expired OTP."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify that login is rejected with proper error message."
+      }
+    ]
+  },
+  {
+    "id": "TC003",
+    "title": "Developer Bypass OTP Authentication",
+    "description": "Verify that developer bypass works correctly allowing login without sending actual OTP for testing environments.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Simulate developer bypass mode enabled."
+      },
+      {
+        "type": "action",
+        "description": "Enter a valid phone number and request OTP."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify OTP is not sent via SMS or push but user can login using a bypass token/code."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify session is persisted and normal app flows continue."
+      }
+    ]
+  },
+  {
+    "id": "TC004",
+    "title": "OTP Rate Limiting Enforcement",
+    "description": "Verify that the rate limiting on OTP requests prevents abuse by limiting the number of OTP requests per phone number.",
+    "category": "security",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Attempt to request OTP repeatedly for the same phone number more than the allowed rate limit within a short period."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify that subsequent OTP requests are blocked and a proper rate limit error is shown."
+      }
+    ]
+  },
+  {
+    "id": "TC005",
+    "title": "Seller Product Creation with Approval Workflow",
+    "description": "Verify seller can create a product and that the product is initially unapproved, requiring manual approval before appearing in customer catalog.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Seller logs in via OTP."
+      },
+      {
+        "type": "action",
+        "description": "Navigate to product management and create a new product with valid details."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify product is saved as unapproved and not visible in customer product catalog."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify product details are synced in real-time with Odoo ERP."
+      }
+    ]
+  },
+  {
+    "id": "TC006",
+    "title": "Seller Product Edit Triggers Re-Approval and Deactivation",
+    "description": "Ensure that editing critical fields of a seller product deactivates it and triggers re-approval workflow.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Seller logs in and edits an existing approved product's critical fields (e.g., price, description)."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the product is marked as unapproved and removed from customer catalog until re-approved."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify changes sync back to Odoo ERP with updated status."
+      }
+    ]
+  },
+  {
+    "id": "TC007",
+    "title": "Seller Product Filtering",
+    "description": "Verify seller can filter their products by approval status, active status, and other attributes.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Seller logs in and navigates to product list."
+      },
+      {
+        "type": "action",
+        "description": "Apply filters for approval status (approved/unapproved) and active status."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the product list updates correctly according to the filters."
+      }
+    ]
+  },
+  {
+    "id": "TC008",
+    "title": "Customer Product Catalog Displays Only Approved and Active Products",
+    "description": "Verify that customer catalog shows only products which are both approved and marked active.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Customer logs in."
+      },
+      {
+        "type": "action",
+        "description": "Browse the product catalog."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify only products with approved=true and active=true are visible."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify unapproved or inactive products are not shown."
+      }
+    ]
+  },
+  {
+    "id": "TC009",
+    "title": "Shopping Cart Add, Update, and Remove Product Items",
+    "description": "Verify that customers can add products to the cart, update quantities, and remove items with real-time sync and RLS enforced.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Customer logs in and browses product catalog."
+      },
+      {
+        "type": "action",
+        "description": "Add various products to the shopping cart."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify items appear correctly in cart with correct details and quantities."
+      },
+      {
+        "type": "action",
+        "description": "Update quantities of cart items."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify quantities update correctly."
+      },
+      {
+        "type": "action",
+        "description": "Remove items from the cart."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify removal is reflected immediately."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify Row Level Security enforces access so customers see only their own cart data."
+      }
+    ]
+  },
+  {
+    "id": "TC010",
+    "title": "Order Placement Success Flow",
+    "description": "Verify that customers can place orders from the cart successfully and order information is saved properly.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Add items to cart and navigate to checkout."
+      },
+      {
+        "type": "action",
+        "description": "Provide delivery address using Google Maps integration."
+      },
+      {
+        "type": "action",
+        "description": "Submit the order."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify order is recorded in the orders and order_items tables with correct details."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify customer receives order confirmation notification via SMS and push respecting preferences."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify order status is visible to customer."
+      }
+    ]
+  },
+  {
+    "id": "TC011",
+    "title": "Order Placement Failure on Missing/Invalid Fields",
+    "description": "Verify that order placement fails gracefully if required fields like address or cart items are missing or invalid.",
+    "category": "error handling",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Attempt to place an order with an empty cart."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify order is rejected with proper validation error."
+      },
+      {
+        "type": "action",
+        "description": "Attempt to place an order with invalid or missing delivery address."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify order is rejected with proper validation error."
+      }
+    ]
+  },
+  {
+    "id": "TC012",
+    "title": "Real-time Synchronization of Seller Product Updates with Odoo ERP",
+    "description": "Verify that any changes to seller products are synchronized in real-time with the Odoo ERP system and status updates from ERP are reflected back.",
+    "category": "integration",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Seller creates or updates a product."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify changes propagate to Odoo ERP within the SLA (<1 second)."
+      },
+      {
+        "type": "action",
+        "description": "Odoo ERP sends updated product status back (e.g., approval or stock changes)."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify local product status and data update accordingly."
+      }
+    ]
+  },
+  {
+    "id": "TC013",
+    "title": "Admin Login with MFA and RBAC Enforcement",
+    "description": "Verify that admin users must authenticate via MFA and their access is limited by role-based access control.",
+    "category": "security",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Admin user navigates to admin web panel login."
+      },
+      {
+        "type": "action",
+        "description": "Enter valid credentials and complete MFA challenge."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify login succeeds only after MFA validation."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify UI elements and permissions match admin user's role."
+      },
+      {
+        "type": "action",
+        "description": "Attempt to access resources or actions not permitted to the admin role."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify access is denied with proper error messages."
+      }
+    ]
+  },
+  {
+    "id": "TC014",
+    "title": "Admin Panel: Traffic Monitoring and Webhook Log Access",
+    "description": "Verify that admins can view API traffic logs and webhook event logs with filtering and sorting capabilities.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Admin logs into admin panel."
+      },
+      {
+        "type": "action",
+        "description": "Navigate to traffic monitoring and webhook logs sections."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify logs are displayed with timestamps, status codes, and request/response details."
+      },
+      {
+        "type": "action",
+        "description": "Apply filters and sort logs by various fields (date, status, endpoint)."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify filtering and sorting behave as expected."
+      }
+    ]
+  },
+  {
+    "id": "TC015",
+    "title": "Admin Panel: Feature Flags Management",
+    "description": "Verify that admins can create, toggle, and delete feature flags and changes take effect immediately.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Admin accesses feature flag management."
+      },
+      {
+        "type": "action",
+        "description": "Create a new feature flag and enable or disable it."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the flag is saved correctly and the system respects its status immediately in app behavior."
+      },
+      {
+        "type": "action",
+        "description": "Delete an existing feature flag."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify deletion is successful and feature is no longer applied."
+      }
+    ]
+  },
+  {
+    "id": "TC016",
+    "title": "Notification Delivery Respecting User Preferences",
+    "description": "Verify that notifications (OTP, order updates) are sent via SMS or push based on user preferences and delivery is logged.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Simulate sending OTP and order update notifications to users with configured preferences."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify that users who opted for SMS receive SMS and those opted for push receive push notifications."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify notification delivery status is recorded accurately in the notifications audit logs."
+      }
+    ]
+  },
+  {
+    "id": "TC017",
+    "title": "Google Maps Integration for Address Management and Delivery Estimation",
+    "description": "Verify that customers can add and select addresses using Google Maps autocomplete and that delivery fee is calculated accordingly.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Customer navigates to address management."
+      },
+      {
+        "type": "action",
+        "description": "Use Google Places autocomplete to enter address."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify valid address details are filled automatically."
+      },
+      {
+        "type": "action",
+        "description": "Verify delivery fee calculation updates dynamically based on address location."
+      },
+      {
+        "type": "assertion",
+        "description": "Delivery fee matches configured delivery_fee_configs pricing rules."
+      }
+    ]
+  },
+  {
+    "id": "TC018",
+    "title": "Audit Trail Logging for Critical Operations",
+    "description": "Verify that all critical operations such as login, product changes, order placements, and admin actions are logged in admin_logs with relevant details.",
+    "category": "security",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Perform critical actions such as login, product creation/edit, order placement, admin user role change."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify entries are created in admin_logs with timestamp, user, action type and status."
+      }
+    ]
+  },
+  {
+    "id": "TC019",
+    "title": "Cross-platform Compatibility of Customer and Seller Mobile App",
+    "description": "Verify that the mobile app functions correctly on Android and iOS platforms with consistent UI and functionality.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Install and launch the app on Android device."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify all major flows (login, catalog browsing, cart, order) work without issue."
+      },
+      {
+        "type": "action",
+        "description": "Repeat the above test on iOS device."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify UI components render properly and functionalities match Android behavior."
+      }
+    ]
+  },
+  {
+    "id": "TC020",
+    "title": "Performance Testing: API Response and Admin Panel Load Times",
+    "description": "Verify that API responses are within 500ms and admin panel page loads complete within 2 seconds under typical load.",
+    "category": "performance",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Send multiple typical API requests (e.g. product list, cart update) and measure response times."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify all API response times are <= 500 ms."
+      },
+      {
+        "type": "action",
+        "description": "Load admin panel pages including dashboard, notifications, and moderation."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify pages load fully within 2 seconds."
+      }
+    ]
+  },
+  {
+    "id": "TC021",
+    "title": "Security Test: Row Level Security and API Key Enforcement",
+    "description": "Verify that RLS policies enforce data isolation between customers and that API keys are required and validated for protected endpoints.",
+    "category": "security",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Attempt to access customer cart and order data using another customer's credentials or token."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify access is denied due to RLS policies."
+      },
+      {
+        "type": "action",
+        "description": "Make API calls to protected endpoints without or with an invalid API key."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify requests are rejected."
+      }
+    ]
+  },
+  {
+    "id": "TC022",
+    "title": "Deployment Verification of Admin Panel Build With API Key Protection",
+    "description": "Verify that the production admin panel build is deployed correctly with target lib/main_admin.dart and configured API key protections are applied.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Deploy admin panel using 'flutter build web --release --target=lib/main_admin.dart'."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify deployment successful and serves correct admin panel."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify API key protections prevent unauthorized web admin API access."
+      }
+    ]
+  },
+  {
+    "id": "TC023",
+    "title": "Notification Failure Handling and Retry Mechanism",
+    "description": "Verify that notification sending failures (SMS or push) are detected, logged, and retried according to configured policies.",
+    "category": "error handling",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Simulate failure in sending SMS via Fast2SMS or push via FCM."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify failure is logged in notification audit logs."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify system retries sending notification as per retry policy."
+      }
+    ]
+  }
+]

@@ -1,0 +1,199 @@
+{
+  "project_name": "Goat Goat",
+  "project_type": "flutter",
+  "description": "A comprehensive Flutter marketplace application for meat and livestock trading with dual-mode architecture supporting both customer and seller portals, integrated with Supabase backend and Odoo ERP system.",
+  "tech_stack": {
+    "frontend": {
+      "framework": "Flutter",
+      "language": "Dart",
+      "version": "SDK ^3.8.1",
+      "ui_components": [
+        "Material Design",
+        "Cupertino Icons",
+        "Google Nav Bar",
+        "Custom Glass-morphism Design"
+      ]
+    },
+    "backend": {
+      "primary": "Supabase",
+      "database": "PostgreSQL with RLS",
+      "realtime": "Supabase Realtime",
+      "edge_functions": "Supabase Edge Functions",
+      "erp_integration": "Odoo ERP via proxy functions"
+    },
+    "authentication": {
+      "method": "Phone-based OTP",
+      "provider": "Fast2SMS API",
+      "session_management": "SharedPreferences + Custom Auth Service"
+    },
+    "notifications": {
+      "push": "Firebase Cloud Messaging (FCM)",
+      "local": "Flutter Local Notifications",
+      "sms": "Fast2SMS API"
+    },
+    "maps_location": {
+      "maps": "Google Maps Flutter",
+      "geocoding": "Geocoding package",
+      "location": "Geolocator package",
+      "places": "Google Places API (HTTP direct)"
+    },
+    "media": {
+      "image_picker": "Image Picker",
+      "image_compression": "Flutter Image Compress"
+    },
+    "storage": {
+      "local": "SharedPreferences",
+      "remote": "Supabase Storage"
+    }
+  },
+  "architecture": {
+    "pattern": "Dual-Mode Architecture",
+    "entry_points": [
+      "lib/main.dart - Mobile App (Customer/Seller)",
+      "lib/main_admin.dart - Admin Panel (Web)"
+    ],
+    "key_services": [
+      "SupabaseService - Database operations",
+      "AuthService - Session management",
+      "FCMService - Push notifications",
+      "OTPService - Phone verification",
+      "LocationService - Maps and geocoding",
+      "DeliveryFeeService - Pricing calculations",
+      "SellerSyncService - Odoo integration"
+    ],
+    "design_patterns": [
+      "Service Layer Pattern",
+      "Repository Pattern",
+      "State Management with StatefulWidget",
+      "Zero-Risk Implementation Pattern"
+    ]
+  },
+  "key_features": {
+    "customer_portal": [
+      "Product catalog browsing",
+      "Shopping cart functionality",
+      "Order placement and tracking",
+      "Location-based delivery",
+      "OTP-based authentication",
+      "Product reviews and ratings",
+      "Address management with Google Maps"
+    ],
+    "seller_portal": [
+      "Product management (CRUD)",
+      "Order management",
+      "Inventory tracking",
+      "Sales analytics",
+      "Profile management",
+      "Odoo ERP synchronization",
+      "Approval workflow integration"
+    ],
+    "admin_panel": [
+      "User management",
+      "Product review moderation",
+      "Notification management",
+      "System analytics",
+      "Debug panel with logs",
+      "Delivery fee configuration",
+      "Feature flag management"
+    ],
+    "integrations": [
+      "Odoo ERP for product/customer sync",
+      "Google Maps for location services",
+      "Fast2SMS for OTP and notifications",
+      "PhonePe for payment processing",
+      "Firebase for push notifications"
+    ]
+  },
+  "database_schema": {
+    "core_tables": [
+      "customers - Customer profiles and data",
+      "sellers - Seller profiles and business info",
+      "meat_products - Product catalog",
+      "livestock_listings - Livestock inventory",
+      "orders - Order management",
+      "order_items - Order line items",
+      "payments - Payment transactions",
+      "otp_verifications - OTP validation",
+      "product_reviews - Customer reviews",
+      "notifications - System notifications",
+      "delivery_fee_configs - Pricing rules",
+      "admin_users - Admin authentication",
+      "admin_logs - System audit trail"
+    ],
+    "security": "Row Level Security (RLS) policies",
+    "audit_trail": "Comprehensive logging and tracking"
+  },
+  "testing_scope": {
+    "unit_tests": [
+      "Service layer functionality",
+      "Authentication flows",
+      "Data validation",
+      "API integrations"
+    ],
+    "integration_tests": [
+      "Customer registration and login",
+      "Seller onboarding process",
+      "Product management workflows",
+      "Order placement and tracking",
+      "Payment processing",
+      "Notification delivery",
+      "Admin panel operations"
+    ],
+    "e2e_tests": [
+      "Complete customer journey",
+      "Complete seller journey",
+      "Admin management workflows",
+      "Cross-platform compatibility"
+    ]
+  },
+  "deployment": {
+    "mobile": {
+      "android": "APK/AAB builds",
+      "ios": "iOS builds (configured)"
+    },
+    "web": {
+      "admin_panel": "Netlify deployment",
+      "build_command": "flutter build web --release --target=lib/main_admin.dart"
+    }
+  },
+  "quality_assurance": {
+    "code_quality": [
+      "Flutter Lints enabled",
+      "Analysis options configured",
+      "Zero-risk implementation patterns",
+      "Comprehensive error handling"
+    ],
+    "performance": [
+      "Optimized image compression",
+      "Efficient state management",
+      "Lazy loading implementations",
+      "Caching strategies"
+    ],
+    "security": [
+      "RLS policies on database",
+      "API key management",
+      "Secure authentication flows",
+      "Input validation and sanitization"
+    ]
+  },
+  "recent_implementations": [
+    "Role-based FCM topic subscriptions",
+    "Admin panel review moderation",
+    "Comprehensive order management system design",
+    "Google Maps integration with delivery zones",
+    "Real-time notification system",
+    "Debug panel with system monitoring",
+    "Feature flag management system"
+  ],
+  "test_priorities": [
+    "Authentication flows (OTP verification)",
+    "Product management (CRUD operations)",
+    "Order placement and tracking",
+    "Notification delivery (FCM + SMS)",
+    "Location services integration",
+    "Admin panel functionality",
+    "Cross-platform compatibility",
+    "Performance under load",
+    "Security and data protection"
+  ]
+}

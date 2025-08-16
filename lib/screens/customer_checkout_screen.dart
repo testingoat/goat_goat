@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/shopping_cart_service.dart';
 import '../services/delivery_fee_service.dart';
+import '../services/comprehensive_order_service.dart';
 import '../services/delivery_address_state.dart';
 import '../widgets/address_picker.dart';
 import '../config/feature_flags.dart';
@@ -199,11 +200,32 @@ class _CustomerCheckoutScreenState extends State<CustomerCheckoutScreen> {
         '🛒 CHECKOUT - Creating order with total: ₹${_orderTotal.toStringAsFixed(0)}',
       );
 
-      // TODO: Implement order creation service
-      // final orderResult = await _orderService.createOrder(orderData);
+      // Use the comprehensive order service for order creation
+      final comprehensiveOrderService = ComprehensiveOrderService();
 
-      // For now, simulate successful order creation
-      await Future.delayed(const Duration(seconds: 2));
+      final orderResult = await comprehensiveOrderService
+          .createComprehensiveOrder(
+            customerId: widget.customer['id'],
+            items: widget.cartItems,
+            subtotal:
+                widget.cartSummary['subtotal'] ??
+                widget.cartSummary['total_price'],
+            deliveryFee: _deliveryFee,
+            deliveryAddress: _deliveryAddress!,
+            deliveryFeeDetails: _deliveryFeeDetails,
+            specialInstructions: null, // TODO: Add special instructions field
+            paymentMethod: _selectedPaymentMethod,
+          );
+
+      if (!orderResult['success']) {
+        throw Exception(orderResult['error'] ?? 'Failed to create order');
+      }
+
+      // Store order result for payment processing
+      final orderId = orderResult['order_id'];
+      final orderNumber = orderResult['order_number'];
+
+      print('✅ CHECKOUT - Order created successfully: $orderNumber');
 
       // Navigate to payment or success screen
       if (_selectedPaymentMethod == 'phonepe') {

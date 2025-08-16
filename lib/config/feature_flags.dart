@@ -25,6 +25,22 @@ class FeatureFlags {
     // Phase 3 Features
     'advanced_analytics': false, // Phase 3.1 - Advanced Analytics
     'multi_vendor': false, // Phase 3.2 - Multi-vendor Marketplace
+    // Comprehensive Order Management System (OMS) Features
+    'comprehensive_order_management':
+        false, // Master flag for comprehensive OMS
+    'order_routing_algorithm':
+        false, // Intelligent seller selection and routing
+    'order_acceptance_timer': false, // 5-minute order acceptance timer
+    'seller_capacity_management':
+        false, // Seller capacity tracking and management
+    'order_state_transitions':
+        false, // Detailed order state transition tracking
+    'enhanced_order_notifications':
+        false, // Enhanced real-time order notifications
+    'order_fallback_routing': false, // Automatic fallback routing on expiration
+    'oms_admin_panel': false, // Order Management System admin panel controls
+    'intelligent_seller_selection':
+        false, // Advanced intelligent seller selection algorithm
     // Development and Testing
     'debug_mode': false, // Debug information display
     'performance_monitoring': true, // Performance tracking
