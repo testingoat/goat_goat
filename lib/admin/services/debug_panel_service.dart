@@ -553,4 +553,342 @@ class DebugPanelService {
       return {'success': false, 'error': e.toString(), 'data': {}};
     }
   }
+
+  // =====================================================
+  // PHASE 2 FEATURES - ADVANCED ANALYTICS & ALERTS
+  // =====================================================
+
+  /// Get advanced traffic analytics with trends and patterns
+  Future<Map<String, dynamic>> getAdvancedTrafficAnalytics({
+    Duration timeWindow = const Duration(hours: 24),
+  }) async {
+    try {
+      if (kDebugMode) {
+        print('🔍 DEBUG_PANEL - Calculating advanced traffic analytics...');
+      }
+
+      final startTime = DateTime.now().subtract(timeWindow);
+
+      // Get all logs in time window with detailed info
+      final logs = await _supabase
+          .from('edge_function_logs')
+          .select(
+            'endpoint, status, latency_ms, ts, user_agent, api_call_count',
+          )
+          .gte('ts', startTime.toIso8601String())
+          .order('ts', ascending: true);
+
+      // Calculate hourly traffic patterns
+      final hourlyTraffic = <int, Map<String, int>>{};
+      final endpointTrends = <String, List<Map<String, dynamic>>>{};
+      final peakUsageTimes = <String, int>{};
+
+      for (final log in logs) {
+        final timestamp = DateTime.parse(log['ts'] as String);
+        final hour = timestamp.hour;
+        final endpoint = log['endpoint'] as String;
+        final status = log['status'] as int;
+        final callCount = log['api_call_count'] as int? ?? 1;
+
+        // Hourly traffic aggregation
+        hourlyTraffic[hour] ??= {'total': 0, 'errors': 0};
+        hourlyTraffic[hour]!['total'] =
+            hourlyTraffic[hour]!['total']! + callCount;
+        if (status >= 400) {
+          hourlyTraffic[hour]!['errors'] =
+              hourlyTraffic[hour]!['errors']! + callCount;
+        }
+
+        // Endpoint trends
+        endpointTrends[endpoint] ??= [];
+        endpointTrends[endpoint]!.add({
+          'timestamp': timestamp.millisecondsSinceEpoch,
+          'status': status,
+          'latency': log['latency_ms'] ?? 0,
+          'calls': callCount,
+        });
+
+        // Peak usage tracking
+        final timeSlot = '${hour.toString().padLeft(2, '0')}:00';
+        peakUsageTimes[timeSlot] = (peakUsageTimes[timeSlot] ?? 0) + callCount;
+      }
+
+      // Find peak usage hour
+      final peakHour = peakUsageTimes.entries.reduce(
+        (a, b) => a.value > b.value ? a : b,
+      );
+
+      // Calculate trends for each endpoint
+      final endpointAnalytics = <String, Map<String, dynamic>>{};
+      for (final endpoint in endpointTrends.keys) {
+        final trends = endpointTrends[endpoint]!;
+        if (trends.length >= 2) {
+          final firstHalf = trends.take(trends.length ~/ 2).toList();
+          final secondHalf = trends.skip(trends.length ~/ 2).toList();
+
+          final firstHalfAvgLatency = firstHalf.isEmpty
+              ? 0.0
+              : firstHalf
+                        .map((t) => t['latency'] as int)
+                        .reduce((a, b) => a + b) /
+                    firstHalf.length;
+          final secondHalfAvgLatency = secondHalf.isEmpty
+              ? 0.0
+              : secondHalf
+                        .map((t) => t['latency'] as int)
+                        .reduce((a, b) => a + b) /
+                    secondHalf.length;
+
+          final latencyTrend = secondHalfAvgLatency - firstHalfAvgLatency;
+
+          endpointAnalytics[endpoint] = {
+            'total_calls': trends.length,
+            'avg_latency':
+                trends.map((t) => t['latency'] as int).reduce((a, b) => a + b) /
+                trends.length,
+            'latency_trend': latencyTrend,
+            'trend_direction': latencyTrend > 10
+                ? 'increasing'
+                : latencyTrend < -10
+                ? 'decreasing'
+                : 'stable',
+            'error_rate':
+                trends.where((t) => t['status'] >= 400).length /
+                trends.length *
+                100,
+          };
+        }
+      }
+
+      if (kDebugMode) {
+        print(
+          '✅ DEBUG_PANEL - Advanced analytics calculated for ${endpointAnalytics.length} endpoints',
+        );
+      }
+
+      return {
+        'success': true,
+        'data': {
+          'hourly_traffic': hourlyTraffic,
+          'endpoint_analytics': endpointAnalytics,
+          'peak_usage': {'time': peakHour.key, 'requests': peakHour.value},
+          'time_window_hours': timeWindow.inHours,
+          'total_endpoints': endpointTrends.length,
+        },
+      };
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ DEBUG_PANEL - Error calculating advanced analytics: $e');
+      }
+      return {'success': false, 'error': e.toString(), 'data': {}};
+    }
+  }
+
+  /// Get system alerts based on thresholds and patterns
+  Future<Map<String, dynamic>> getSystemAlerts() async {
+    try {
+      if (kDebugMode) {
+        print('🔍 DEBUG_PANEL - Checking system alerts...');
+      }
+
+      final alerts = <Map<String, dynamic>>[];
+      final now = DateTime.now();
+      final lastHour = now.subtract(const Duration(hours: 1));
+
+      // Check error rate alerts (threshold: 5%)
+      final statsResult = await getEndpointStatistics(
+        timeWindow: const Duration(hours: 1),
+      );
+      if (statsResult['success']) {
+        final stats = statsResult['data'] as Map<String, dynamic>;
+        for (final endpoint in stats.keys) {
+          final endpointStats = stats[endpoint] as Map<String, dynamic>;
+          final errorRate = endpointStats['error_rate'] as double;
+
+          if (errorRate > 5.0) {
+            alerts.add({
+              'type': 'error_rate',
+              'severity': errorRate > 15.0 ? 'critical' : 'warning',
+              'endpoint': endpoint,
+              'message':
+                  'High error rate detected: ${errorRate.toStringAsFixed(1)}%',
+              'value': errorRate,
+              'threshold': 5.0,
+              'timestamp': now.toIso8601String(),
+            });
+          }
+        }
+      }
+
+      // Check latency alerts (threshold: 2000ms)
+      final recentLogs = await _supabase
+          .from('edge_function_logs')
+          .select('endpoint, latency_ms')
+          .gte('ts', lastHour.toIso8601String())
+          .gte('latency_ms', 2000);
+
+      final latencyAlerts = <String, List<int>>{};
+      for (final log in recentLogs) {
+        final endpoint = log['endpoint'] as String;
+        final latency = log['latency_ms'] as int;
+        latencyAlerts[endpoint] ??= [];
+        latencyAlerts[endpoint]!.add(latency);
+      }
+
+      for (final endpoint in latencyAlerts.keys) {
+        final latencies = latencyAlerts[endpoint]!;
+        final avgLatency = latencies.reduce((a, b) => a + b) / latencies.length;
+
+        alerts.add({
+          'type': 'high_latency',
+          'severity': avgLatency > 5000 ? 'critical' : 'warning',
+          'endpoint': endpoint,
+          'message':
+              'High latency detected: ${avgLatency.toStringAsFixed(0)}ms avg',
+          'value': avgLatency,
+          'threshold': 2000,
+          'occurrences': latencies.length,
+          'timestamp': now.toIso8601String(),
+        });
+      }
+
+      // Check for authentication failures spike
+      final authFailures = await _supabase
+          .from('odoo_session_logs')
+          .select('failure_reason')
+          .eq('success', false)
+          .gte('attempt_timestamp', lastHour.toIso8601String());
+
+      if (authFailures.length > 10) {
+        alerts.add({
+          'type': 'auth_failures',
+          'severity': authFailures.length > 20 ? 'critical' : 'warning',
+          'endpoint': 'odoo-auth',
+          'message':
+              'High authentication failure rate: ${authFailures.length} failures in last hour',
+          'value': authFailures.length,
+          'threshold': 10,
+          'timestamp': now.toIso8601String(),
+        });
+      }
+
+      // Sort alerts by severity (critical first)
+      alerts.sort((a, b) {
+        final severityOrder = {'critical': 0, 'warning': 1, 'info': 2};
+        return (severityOrder[a['severity']] ?? 2).compareTo(
+          severityOrder[b['severity']] ?? 2,
+        );
+      });
+
+      if (kDebugMode) {
+        print('✅ DEBUG_PANEL - Found ${alerts.length} system alerts');
+      }
+
+      return {
+        'success': true,
+        'data': alerts,
+        'summary': {
+          'total_alerts': alerts.length,
+          'critical': alerts.where((a) => a['severity'] == 'critical').length,
+          'warnings': alerts.where((a) => a['severity'] == 'warning').length,
+          'last_checked': now.toIso8601String(),
+        },
+      };
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ DEBUG_PANEL - Error checking system alerts: $e');
+      }
+      return {
+        'success': false,
+        'error': e.toString(),
+        'data': [],
+        'summary': {'total_alerts': 0, 'critical': 0, 'warnings': 0},
+      };
+    }
+  }
+
+  /// Get performance insights and recommendations
+  Future<Map<String, dynamic>> getPerformanceInsights() async {
+    try {
+      final insights = <Map<String, dynamic>>[];
+      final recommendations = <String>[];
+
+      // Get recent performance data
+      final statsResult = await getEndpointStatistics(
+        timeWindow: const Duration(hours: 24),
+      );
+      if (statsResult['success']) {
+        final stats = statsResult['data'] as Map<String, dynamic>;
+
+        // Analyze each endpoint
+        for (final endpoint in stats.keys) {
+          final endpointStats = stats[endpoint] as Map<String, dynamic>;
+          final avgLatency = endpointStats['avg_latency'] as double;
+          final errorRate = endpointStats['error_rate'] as double;
+          final totalCalls = endpointStats['total_calls'] as int;
+
+          // Performance insights
+          if (avgLatency > 1000) {
+            insights.add({
+              'type': 'performance',
+              'endpoint': endpoint,
+              'issue': 'High average latency',
+              'value': avgLatency,
+              'impact': 'User experience degradation',
+              'priority': avgLatency > 2000 ? 'high' : 'medium',
+            });
+
+            recommendations.add(
+              'Optimize $endpoint endpoint - current avg latency: ${avgLatency.toStringAsFixed(0)}ms',
+            );
+          }
+
+          if (errorRate > 2.0 && totalCalls > 10) {
+            insights.add({
+              'type': 'reliability',
+              'endpoint': endpoint,
+              'issue': 'Elevated error rate',
+              'value': errorRate,
+              'impact': 'Service reliability concerns',
+              'priority': errorRate > 10.0 ? 'high' : 'medium',
+            });
+
+            recommendations.add(
+              'Investigate $endpoint errors - current error rate: ${errorRate.toStringAsFixed(1)}%',
+            );
+          }
+
+          if (totalCalls > 1000) {
+            insights.add({
+              'type': 'usage',
+              'endpoint': endpoint,
+              'issue': 'High traffic volume',
+              'value': totalCalls.toDouble(),
+              'impact': 'Potential scaling needs',
+              'priority': 'low',
+            });
+          }
+        }
+      }
+
+      return {
+        'success': true,
+        'data': {
+          'insights': insights,
+          'recommendations': recommendations,
+          'analysis_period': '24 hours',
+          'generated_at': DateTime.now().toIso8601String(),
+        },
+      };
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ DEBUG_PANEL - Error generating performance insights: $e');
+      }
+      return {
+        'success': false,
+        'error': e.toString(),
+        'data': {'insights': [], 'recommendations': []},
+      };
+    }
+  }
 }

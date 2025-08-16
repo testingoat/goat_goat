@@ -34,6 +34,8 @@ class _DebugPanelScreenState extends State<DebugPanelScreen>
   Map<String, dynamic> _productData = {};
   Map<String, dynamic> _flagsData = {};
   Map<String, dynamic> _systemHealth = {};
+  Map<String, dynamic> _systemAlerts = {};
+  Map<String, dynamic> _advancedAnalytics = {};
 
   // Filters for traffic explorer
   String? _selectedEndpoint;
@@ -76,6 +78,12 @@ class _DebugPanelScreenState extends State<DebugPanelScreen>
       final healthResult = await _debugService.getSystemHealthOverview();
       if (healthResult['success']) {
         _systemHealth = healthResult['data'];
+      }
+
+      // Load system alerts (Phase 2)
+      final alertsResult = await _debugService.getSystemAlerts();
+      if (alertsResult['success']) {
+        _systemAlerts = alertsResult;
       }
 
       // Load data for current tab
@@ -240,7 +248,7 @@ class _DebugPanelScreenState extends State<DebugPanelScreen>
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Colors.grey.withValues(alpha: 0.1),
             spreadRadius: 1,
             blurRadius: 3,
             offset: const Offset(0, 1),
@@ -291,6 +299,12 @@ class _DebugPanelScreenState extends State<DebugPanelScreen>
     final errorRate = _systemHealth['current_error_rate'] as double? ?? 0.0;
     final lastHourRequests = _systemHealth['last_hour_requests'] as int? ?? 0;
 
+    // Get alerts info (Phase 2)
+    final alertsSummary =
+        _systemAlerts['summary'] as Map<String, dynamic>? ?? {};
+    final totalAlerts = alertsSummary['total_alerts'] as int? ?? 0;
+    final criticalAlerts = alertsSummary['critical'] as int? ?? 0;
+
     Color statusColor;
     IconData statusIcon;
     switch (status) {
@@ -307,6 +321,12 @@ class _DebugPanelScreenState extends State<DebugPanelScreen>
         statusIcon = Icons.help;
     }
 
+    // Override status color if there are critical alerts
+    if (criticalAlerts > 0) {
+      statusColor = Colors.red;
+      statusIcon = Icons.error;
+    }
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       color: statusColor.withValues(alpha: 0.1),
@@ -315,7 +335,7 @@ class _DebugPanelScreenState extends State<DebugPanelScreen>
           Icon(statusIcon, color: statusColor, size: 20),
           const SizedBox(width: 8),
           Text(
-            'System Status: ${status.toUpperCase()}',
+            'System Status: ${criticalAlerts > 0 ? 'CRITICAL' : status.toUpperCase()}',
             style: TextStyle(fontWeight: FontWeight.bold, color: statusColor),
           ),
           const SizedBox(width: 16),
@@ -328,6 +348,31 @@ class _DebugPanelScreenState extends State<DebugPanelScreen>
             'Last Hour: $lastHourRequests requests',
             style: TextStyle(color: Colors.grey[700]),
           ),
+          const SizedBox(width: 16),
+          // Alerts indicator (Phase 2)
+          if (totalAlerts > 0)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: criticalAlerts > 0 ? Colors.red : Colors.orange,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.warning, color: Colors.white, size: 16),
+                  const SizedBox(width: 4),
+                  Text(
+                    '$totalAlerts Alert${totalAlerts > 1 ? 's' : ''}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           const Spacer(),
           Text(
             'Last Updated: ${DateTime.now().toString().substring(11, 19)}',
@@ -927,14 +972,801 @@ class _DebugPanelScreenState extends State<DebugPanelScreen>
   }
 
   Widget _buildOdooSessionMonitor() {
-    return const Center(child: Text('Odoo Session Monitor - Coming Soon'));
+    final sessionData = _sessionData['data'] as List? ?? [];
+    final statistics =
+        _sessionData['statistics'] as Map<String, dynamic>? ?? {};
+    final flags = _sessionData['flags'] as Map<String, dynamic>? ?? {};
+    final userAgents =
+        _sessionData['user_agents'] as Map<String, dynamic>? ?? {};
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Statistics Cards
+          Row(
+            children: [
+              Expanded(
+                child: _buildStatCard(
+                  'Success Rate',
+                  '${(statistics['success_rate'] as double? ?? 0.0).toStringAsFixed(1)}%',
+                  Icons.check_circle,
+                  Colors.green,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildStatCard(
+                  'Total Attempts',
+                  '${statistics['total_attempts'] ?? 0}',
+                  Icons.login,
+                  Colors.blue,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildStatCard(
+                  'Cookie Rate',
+                  '${(statistics['cookie_presence_rate'] as double? ?? 0.0).toStringAsFixed(1)}%',
+                  Icons.cookie,
+                  Colors.orange,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          // Feature Flags Section
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Feature Flags Status',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 12),
+                  ...flags.entries.map(
+                    (entry) => Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Row(
+                        children: [
+                          Icon(
+                            entry.value ? Icons.check_circle : Icons.cancel,
+                            color: entry.value ? Colors.green : Colors.red,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(entry.key),
+                          const Spacer(),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: entry.value
+                                  ? Colors.green.withValues(alpha: 0.1)
+                                  : Colors.red.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              entry.value ? 'ENABLED' : 'DISABLED',
+                              style: TextStyle(
+                                color: entry.value ? Colors.green : Colors.red,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // User Agent Breakdown
+          if (userAgents.isNotEmpty)
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'User Agent Breakdown (Last 24h)',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    ...userAgents.entries.map(
+                      (entry) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Row(
+                          children: [
+                            Icon(_getUserAgentIcon(entry.key), size: 20),
+                            const SizedBox(width: 8),
+                            Text(entry.key),
+                            const Spacer(),
+                            Text(
+                              '${entry.value} calls',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          const SizedBox(height: 24),
+
+          // Recent Session Attempts
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Recent Session Attempts',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 12),
+                  if (sessionData.isEmpty)
+                    const Center(
+                      child: Text(
+                        'No session data available',
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    )
+                  else
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: DataTable(
+                        columns: const [
+                          DataColumn(label: Text('Time')),
+                          DataColumn(label: Text('Success')),
+                          DataColumn(label: Text('Endpoint')),
+                          DataColumn(label: Text('Cookie')),
+                          DataColumn(label: Text('UID')),
+                          DataColumn(label: Text('Failure Reason')),
+                        ],
+                        rows: sessionData.take(10).map<DataRow>((session) {
+                          final timestamp = DateTime.parse(
+                            session['attempt_timestamp'] as String,
+                          );
+                          final success = session['success'] as bool;
+
+                          return DataRow(
+                            cells: [
+                              DataCell(
+                                Text(timestamp.toString().substring(11, 19)),
+                              ),
+                              DataCell(
+                                Icon(
+                                  success ? Icons.check_circle : Icons.error,
+                                  color: success ? Colors.green : Colors.red,
+                                  size: 20,
+                                ),
+                              ),
+                              DataCell(
+                                Text(
+                                  session['endpoint_called'] as String? ??
+                                      'Unknown',
+                                ),
+                              ),
+                              DataCell(
+                                Icon(
+                                  session['set_cookie_seen']
+                                      ? Icons.check
+                                      : Icons.close,
+                                  color: session['set_cookie_seen']
+                                      ? Colors.green
+                                      : Colors.grey,
+                                  size: 16,
+                                ),
+                              ),
+                              DataCell(
+                                Icon(
+                                  session['uid_present']
+                                      ? Icons.check
+                                      : Icons.close,
+                                  color: session['uid_present']
+                                      ? Colors.green
+                                      : Colors.grey,
+                                  size: 16,
+                                ),
+                              ),
+                              DataCell(
+                                Text(
+                                  session['failure_reason'] as String? ?? '-',
+                                ),
+                              ),
+                            ],
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  IconData _getUserAgentIcon(String userAgent) {
+    switch (userAgent) {
+      case 'Mobile App':
+        return Icons.phone_android;
+      case 'Admin Panel':
+        return Icons.admin_panel_settings;
+      case 'Webhook':
+        return Icons.webhook;
+      default:
+        return Icons.help_outline;
+    }
+  }
+
+  Widget _buildStatCard(
+    String title,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, color: color, size: 24),
+                const SizedBox(width: 8),
+                Text(
+                  title,
+                  style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              value,
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildProductStatusTracker() {
-    return const Center(child: Text('Product Status Tracker - Coming Soon'));
+    final events = _productData['data'] as List? ?? [];
+    final productCounts =
+        _productData['product_counts'] as Map<String, dynamic>? ?? {};
+    final duplicates = _productData['duplicates'] as List? ?? [];
+    final dryRuns = _productData['dry_runs'] as List? ?? [];
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Product Status Overview Cards
+          Row(
+            children: [
+              Expanded(
+                child: _buildStatCard(
+                  'Pending',
+                  '${productCounts['pending'] ?? 0}',
+                  Icons.pending,
+                  Colors.orange,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildStatCard(
+                  'Approved',
+                  '${productCounts['approved'] ?? 0}',
+                  Icons.check_circle,
+                  Colors.green,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildStatCard(
+                  'Rejected',
+                  '${productCounts['rejected'] ?? 0}',
+                  Icons.cancel,
+                  Colors.red,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildStatCard(
+                  'Total',
+                  '${productCounts['total'] ?? 0}',
+                  Icons.inventory,
+                  Colors.blue,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          // Recent Product Events
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Recent Product Approval Events',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 12),
+                  if (events.isEmpty)
+                    const Center(
+                      child: Text(
+                        'No product events available',
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    )
+                  else
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: DataTable(
+                        columns: const [
+                          DataColumn(label: Text('Time')),
+                          DataColumn(label: Text('Event Type')),
+                          DataColumn(label: Text('Source')),
+                          DataColumn(label: Text('Status Change')),
+                          DataColumn(label: Text('Product ID')),
+                        ],
+                        rows: events.take(10).map<DataRow>((event) {
+                          final timestamp = DateTime.parse(
+                            event['created_at'] as String,
+                          );
+                          final eventType = event['event_type'] as String;
+                          final source = event['event_source'] as String;
+                          final oldStatus = event['old_status'] as String?;
+                          final newStatus = event['new_status'] as String?;
+
+                          return DataRow(
+                            cells: [
+                              DataCell(
+                                Text(timestamp.toString().substring(11, 19)),
+                              ),
+                              DataCell(
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: _getEventTypeColor(
+                                      eventType,
+                                    ).withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    eventType.toUpperCase(),
+                                    style: TextStyle(
+                                      color: _getEventTypeColor(eventType),
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              DataCell(Text(source)),
+                              DataCell(
+                                Text(
+                                  oldStatus != null && newStatus != null
+                                      ? '$oldStatus → $newStatus'
+                                      : '-',
+                                ),
+                              ),
+                              DataCell(
+                                Text(
+                                  event['product_id']?.toString().substring(
+                                        0,
+                                        8,
+                                      ) ??
+                                      '-',
+                                  style: const TextStyle(
+                                    fontFamily: 'monospace',
+                                  ),
+                                ),
+                              ),
+                            ],
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // Duplicate Prevention Events
+          if (duplicates.isNotEmpty)
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Duplicate Prevention Events',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: DataTable(
+                        columns: const [
+                          DataColumn(label: Text('Time')),
+                          DataColumn(label: Text('Field')),
+                          DataColumn(label: Text('Value')),
+                          DataColumn(label: Text('Prevented')),
+                        ],
+                        rows: duplicates.take(5).map<DataRow>((duplicate) {
+                          final timestamp = DateTime.parse(
+                            duplicate['created_at'] as String,
+                          );
+
+                          return DataRow(
+                            cells: [
+                              DataCell(
+                                Text(timestamp.toString().substring(11, 19)),
+                              ),
+                              DataCell(
+                                Text(
+                                  duplicate['duplicate_check_field']
+                                          as String? ??
+                                      '-',
+                                ),
+                              ),
+                              DataCell(
+                                Text(
+                                  duplicate['duplicate_value'] as String? ??
+                                      '-',
+                                ),
+                              ),
+                              DataCell(
+                                Icon(
+                                  duplicate['duplicate_prevented']
+                                      ? Icons.block
+                                      : Icons.check,
+                                  color: duplicate['duplicate_prevented']
+                                      ? Colors.red
+                                      : Colors.green,
+                                  size: 20,
+                                ),
+                              ),
+                            ],
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          const SizedBox(height: 24),
+
+          // Dry Run Events
+          if (dryRuns.isNotEmpty)
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Dry Run Events',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    ...dryRuns.take(3).map((dryRun) {
+                      final timestamp = DateTime.parse(
+                        dryRun['created_at'] as String,
+                      );
+                      final dryRunData =
+                          dryRun['dry_run_data'] as Map<String, dynamic>? ?? {};
+
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        child: ExpansionTile(
+                          title: Text(
+                            'Dry Run - ${timestamp.toString().substring(11, 19)}',
+                          ),
+                          subtitle: Text('Source: ${dryRun['event_source']}'),
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[100],
+                                  borderRadius: BorderRadius.circular(4),
+                                  border: Border.all(color: Colors.grey[300]!),
+                                ),
+                                child: Text(
+                                  dryRunData.isNotEmpty
+                                      ? const JsonEncoder.withIndent(
+                                          '  ',
+                                        ).convert(dryRunData)
+                                      : 'No dry run data available',
+                                  style: const TextStyle(
+                                    fontFamily: 'monospace',
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Color _getEventTypeColor(String eventType) {
+    switch (eventType) {
+      case 'approval':
+        return Colors.green;
+      case 'rejection':
+        return Colors.red;
+      case 'sync':
+        return Colors.blue;
+      case 'duplicate_check':
+        return Colors.orange;
+      case 'dry_run':
+        return Colors.purple;
+      default:
+        return Colors.grey;
+    }
   }
 
   Widget _buildFeatureFlagsViewer() {
-    return const Center(child: Text('Feature Flags Viewer - Coming Soon'));
+    final flags = _flagsData['data'] as Map<String, dynamic>? ?? {};
+    final note = _flagsData['note'] as String?;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header with note if available
+          if (note != null)
+            Card(
+              color: Colors.blue[50],
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    const Icon(Icons.info, color: Colors.blue),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        note,
+                        style: const TextStyle(color: Colors.blue),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          const SizedBox(height: 16),
+
+          // Feature Flags List
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Text(
+                        'Feature Flags Status',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const Spacer(),
+                      Text(
+                        '${flags.length} flags',
+                        style: TextStyle(color: Colors.grey[600]),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  if (flags.isEmpty)
+                    const Center(
+                      child: Text(
+                        'No feature flags available',
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    )
+                  else
+                    ...flags.entries.map((entry) {
+                      final flagName = entry.key;
+                      final isEnabled = entry.value as bool;
+
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Row(
+                            children: [
+                              // Status Icon
+                              Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  color: isEnabled
+                                      ? Colors.green.withValues(alpha: 0.1)
+                                      : Colors.red.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Icon(
+                                  isEnabled ? Icons.check_circle : Icons.cancel,
+                                  color: isEnabled ? Colors.green : Colors.red,
+                                  size: 24,
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+
+                              // Flag Details
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      flagName,
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      _getFlagDescription(flagName),
+                                      style: TextStyle(
+                                        color: Colors.grey[600],
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                              // Status Badge
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: isEnabled
+                                      ? Colors.green.withValues(alpha: 0.1)
+                                      : Colors.red.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: isEnabled
+                                        ? Colors.green
+                                        : Colors.red,
+                                  ),
+                                ),
+                                child: Text(
+                                  isEnabled ? 'ENABLED' : 'DISABLED',
+                                  style: TextStyle(
+                                    color: isEnabled
+                                        ? Colors.green
+                                        : Colors.red,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // Phase 2 Notice
+          Card(
+            color: Colors.orange[50],
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.construction, color: Colors.orange),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'Phase 2 Features',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.orange,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Write-safe controls for feature flag toggles will be available in Phase 2.',
+                    style: TextStyle(color: Colors.orange),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Current implementation is read-only for safety.',
+                    style: TextStyle(color: Colors.orange, fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _getFlagDescription(String flagName) {
+    switch (flagName) {
+      case 'FORCE_V2_WEBHOOKS':
+        return 'Forces all webhooks to use v2 payload format';
+      case 'ENABLE_PRODUCT_DUP_CHECK':
+        return 'Enables duplicate product checking by default_code';
+      case 'ENABLE_AUTO_ACTIVATE_ON_APPROVAL':
+        return 'Automatically activates products when approved via webhook';
+      case 'AUTO_SYNC_STATUS_ON_OPEN':
+        return 'Automatically syncs product status when app opens';
+      default:
+        return 'Feature flag for system configuration';
+    }
   }
 }
