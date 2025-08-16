@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'feature_flag_service.dart';
 
 /// Service for Admin Debug Panel data operations
 /// Implements zero-risk pattern with read-only operations and proper error handling
@@ -314,31 +315,28 @@ class DebugPanelService {
         print('🔍 DEBUG_PANEL - Fetching feature flag states...');
       }
 
-      // Get from feature_flags table if it exists, otherwise return defaults
-      try {
-        final flags = await _supabase
-            .from('feature_flags')
-            .select('*')
-            .order('flag_name');
+      // Use the dedicated feature flag service
+      final flagService = FeatureFlagService();
+      final result = await flagService.getAllFeatureFlags();
 
+      if (result['success']) {
+        // Convert to the format expected by the debug panel
+        final flagData = result['data'] as Map<String, dynamic>;
         final flagStates = <String, bool>{};
-        for (final flag in flags) {
-          flagStates[flag['flag_name']] = flag['is_enabled'] ?? false;
+
+        for (final entry in flagData.entries) {
+          final flagInfo = entry.value as Map<String, dynamic>;
+          flagStates[entry.key] = flagInfo['enabled'] as bool? ?? false;
         }
 
-        return {'success': true, 'data': flagStates};
-      } catch (e) {
-        // If feature_flags table doesn't exist, return hardcoded states
         return {
           'success': true,
-          'data': {
-            'FORCE_V2_WEBHOOKS': true,
-            'ENABLE_PRODUCT_DUP_CHECK': false,
-            'ENABLE_AUTO_ACTIVATE_ON_APPROVAL': true,
-            'AUTO_SYNC_STATUS_ON_OPEN': true,
-          },
-          'note': 'Using hardcoded values - feature_flags table not available',
+          'data': flagStates,
+          'source': result['source'],
+          'note': result['note'],
         };
+      } else {
+        return result;
       }
     } catch (e) {
       if (kDebugMode) {

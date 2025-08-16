@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:convert';
 import '../services/debug_panel_service.dart';
+import '../services/feature_flag_service.dart';
 
 /// Admin Debug Panel Screen - Phase 1 Implementation
 /// Zero-risk implementation with read-only operations and comprehensive logging
@@ -1563,6 +1564,7 @@ class _DebugPanelScreenState extends State<DebugPanelScreen>
   Widget _buildFeatureFlagsViewer() {
     final flags = _flagsData['data'] as Map<String, dynamic>? ?? {};
     final note = _flagsData['note'] as String?;
+    final source = _flagsData['source'] as String? ?? 'unknown';
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -1601,13 +1603,36 @@ class _DebugPanelScreenState extends State<DebugPanelScreen>
                   Row(
                     children: [
                       const Text(
-                        'Feature Flags Status',
+                        'Feature Flags Management',
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       const Spacer(),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: source == 'database'
+                              ? Colors.green.withValues(alpha: 0.1)
+                              : Colors.orange.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          source == 'database' ? 'LIVE DATA' : 'READ-ONLY',
+                          style: TextStyle(
+                            color: source == 'database'
+                                ? Colors.green
+                                : Colors.orange,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 10,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
                       Text(
                         '${flags.length} flags',
                         style: TextStyle(color: Colors.grey[600]),
@@ -1626,6 +1651,9 @@ class _DebugPanelScreenState extends State<DebugPanelScreen>
                     ...flags.entries.map((entry) {
                       final flagName = entry.key;
                       final isEnabled = entry.value as bool;
+                      final canToggle =
+                          source ==
+                          'database'; // Only allow toggles if we have database access
 
                       return Card(
                         margin: const EdgeInsets.only(bottom: 8),
@@ -1675,34 +1703,44 @@ class _DebugPanelScreenState extends State<DebugPanelScreen>
                                 ),
                               ),
 
-                              // Status Badge
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: isEnabled
-                                      ? Colors.green.withValues(alpha: 0.1)
-                                      : Colors.red.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(
+                              // Toggle Switch (Phase 3) or Status Badge
+                              if (canToggle)
+                                Switch(
+                                  value: isEnabled,
+                                  onChanged: (newValue) =>
+                                      _toggleFeatureFlag(flagName, newValue),
+                                  activeColor: Colors.green,
+                                  inactiveThumbColor: Colors.red,
+                                )
+                              else
+                                // Status Badge (read-only)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 6,
+                                  ),
+                                  decoration: BoxDecoration(
                                     color: isEnabled
-                                        ? Colors.green
-                                        : Colors.red,
+                                        ? Colors.green.withValues(alpha: 0.1)
+                                        : Colors.red.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: isEnabled
+                                          ? Colors.green
+                                          : Colors.red,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    isEnabled ? 'ENABLED' : 'DISABLED',
+                                    style: TextStyle(
+                                      color: isEnabled
+                                          ? Colors.green
+                                          : Colors.red,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
                                   ),
                                 ),
-                                child: Text(
-                                  isEnabled ? 'ENABLED' : 'DISABLED',
-                                  style: TextStyle(
-                                    color: isEnabled
-                                        ? Colors.green
-                                        : Colors.red,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ),
                             ],
                           ),
                         ),
@@ -1714,9 +1752,9 @@ class _DebugPanelScreenState extends State<DebugPanelScreen>
           ),
           const SizedBox(height: 24),
 
-          // Phase 2 Notice
+          // Phase 3 Features Notice
           Card(
-            color: Colors.orange[50],
+            color: Colors.green[50],
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -1724,27 +1762,30 @@ class _DebugPanelScreenState extends State<DebugPanelScreen>
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.construction, color: Colors.orange),
+                      const Icon(Icons.new_releases, color: Colors.green),
                       const SizedBox(width: 8),
                       const Text(
-                        'Phase 2 Features',
+                        'Phase 3 Features Active',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: Colors.orange,
+                          color: Colors.green,
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'Write-safe controls for feature flag toggles will be available in Phase 2.',
-                    style: TextStyle(color: Colors.orange),
+                    '✅ Interactive feature flag toggles with real-time updates',
+                    style: TextStyle(color: Colors.green),
                   ),
-                  const SizedBox(height: 8),
                   const Text(
-                    'Current implementation is read-only for safety.',
-                    style: TextStyle(color: Colors.orange, fontSize: 12),
+                    '✅ Audit logging for all flag changes',
+                    style: TextStyle(color: Colors.green),
+                  ),
+                  const Text(
+                    '✅ Safety checks to prevent critical system disruption',
+                    style: TextStyle(color: Colors.green),
                   ),
                 ],
               ),
@@ -1765,8 +1806,86 @@ class _DebugPanelScreenState extends State<DebugPanelScreen>
         return 'Automatically activates products when approved via webhook';
       case 'AUTO_SYNC_STATUS_ON_OPEN':
         return 'Automatically syncs product status when app opens';
+      case 'ENABLE_DEBUG_LOGGING':
+        return 'Enables debug panel logging for edge functions';
       default:
         return 'Feature flag for system configuration';
+    }
+  }
+
+  /// Toggle a feature flag (Phase 3)
+  Future<void> _toggleFeatureFlag(String flagName, bool newValue) async {
+    if (!mounted) return;
+
+    try {
+      // Show loading indicator
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const AlertDialog(
+          content: Row(
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(width: 16),
+              Text('Updating feature flag...'),
+            ],
+          ),
+        ),
+      );
+
+      final flagService = FeatureFlagService();
+      final result = await flagService.toggleFeatureFlag(
+        flagName,
+        newValue,
+        changedBy: 'admin_panel',
+        reason: 'Manual toggle via debug panel',
+      );
+
+      // Close loading dialog
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+
+      if (!mounted) return;
+
+      if (result['success']) {
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              result['changed']
+                  ? 'Feature flag $flagName ${newValue ? 'enabled' : 'disabled'}'
+                  : 'Feature flag already has the requested value',
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+
+        // Refresh the flags data
+        await _loadFlagsData();
+      } else {
+        // Show error message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to toggle feature flag: ${result['error']}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      // Close loading dialog if still open
+      if (mounted && Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error toggling feature flag: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 }
