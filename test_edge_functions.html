@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edge Function Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .result {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f9f9f9;
+            border-radius: 4px;
+            white-space: pre-wrap;
+        }
+        .error {
+            background: #ffebee;
+            color: #c62828;
+        }
+        .success {
+            background: #e8f5e8;
+            color: #2e7d32;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Edge Function Test Suite</h1>
+    <p>This page tests the instrumented edge functions to generate log data for the debug panel.</p>
+
+    <div class="test-section">
+        <h3>🔄 Product Sync Webhook</h3>
+        <button onclick="testProductSync()">Test Product Sync</button>
+        <div id="product-sync-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>📊 Odoo Status Sync</h3>
+        <button onclick="testOdooStatusSync()">Test Odoo Status</button>
+        <div id="odoo-status-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>📱 Fast2SMS Custom</h3>
+        <button onclick="testFast2SMS()">Test SMS (Safe)</button>
+        <div id="fast2sms-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>🔔 Push Notification</h3>
+        <button onclick="testPushNotification()">Test Push Notification</button>
+        <div id="push-notification-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>🎯 Test All Functions</h3>
+        <button onclick="testAllFunctions()">Run All Tests</button>
+        <div id="all-tests-result" class="result"></div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://oaynfzqjielnsipttzbs.supabase.co';
+        const API_KEY = 'your-webhook-api-key'; // This would need to be set properly
+
+        async function makeRequest(functionName, data = {}) {
+            const url = `${SUPABASE_URL}/functions/v1/${functionName}`;
+            
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-api-key': API_KEY,
+                        'User-Agent': 'GoatGoat-DebugTest/1.0'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.text();
+                return {
+                    status: response.status,
+                    statusText: response.statusText,
+                    body: result
+                };
+            } catch (error) {
+                return {
+                    status: 0,
+                    statusText: 'Network Error',
+                    body: error.message
+                };
+            }
+        }
+
+        async function testProductSync() {
+            const resultDiv = document.getElementById('product-sync-result');
+            resultDiv.textContent = 'Testing...';
+            
+            const result = await makeRequest('product-sync-webhook', {
+                test: true,
+                product_name: 'Debug Test Product',
+                seller_id: 'test-seller-123'
+            });
+            
+            resultDiv.className = `result ${result.status === 200 ? 'success' : 'error'}`;
+            resultDiv.textContent = `Status: ${result.status} ${result.statusText}\nResponse: ${result.body}`;
+        }
+
+        async function testOdooStatusSync() {
+            const resultDiv = document.getElementById('odoo-status-result');
+            resultDiv.textContent = 'Testing...';
+            
+            const result = await makeRequest('odoo-status-sync', {
+                test: true,
+                product_id: 'test-product-123'
+            });
+            
+            resultDiv.className = `result ${result.status === 200 ? 'success' : 'error'}`;
+            resultDiv.textContent = `Status: ${result.status} ${result.statusText}\nResponse: ${result.body}`;
+        }
+
+        async function testFast2SMS() {
+            const resultDiv = document.getElementById('fast2sms-result');
+            resultDiv.textContent = 'Testing...';
+            
+            // Use a safe test that won't actually send SMS
+            const result = await makeRequest('fast2sms-custom', {
+                phone_number: '0000000000', // Invalid number for testing
+                message: 'Debug test message',
+                api_key: 'test-key'
+            });
+            
+            resultDiv.className = `result ${result.status >= 200 && result.status < 500 ? 'success' : 'error'}`;
+            resultDiv.textContent = `Status: ${result.status} ${result.statusText}\nResponse: ${result.body}`;
+        }
+
+        async function testPushNotification() {
+            const resultDiv = document.getElementById('push-notification-result');
+            resultDiv.textContent = 'Testing...';
+            
+            const result = await makeRequest('send-push-notification', {
+                test: true,
+                title: 'Debug Test',
+                body: 'This is a debug test notification'
+            });
+            
+            resultDiv.className = `result ${result.status >= 200 && result.status < 500 ? 'success' : 'error'}`;
+            resultDiv.textContent = `Status: ${result.status} ${result.statusText}\nResponse: ${result.body}`;
+        }
+
+        async function testAllFunctions() {
+            const resultDiv = document.getElementById('all-tests-result');
+            resultDiv.textContent = 'Running all tests...';
+            
+            const tests = [
+                { name: 'Product Sync', fn: testProductSync },
+                { name: 'Odoo Status', fn: testOdooStatusSync },
+                { name: 'Fast2SMS', fn: testFast2SMS },
+                { name: 'Push Notification', fn: testPushNotification }
+            ];
+            
+            let results = [];
+            for (const test of tests) {
+                try {
+                    await test.fn();
+                    results.push(`✅ ${test.name}: Completed`);
+                } catch (error) {
+                    results.push(`❌ ${test.name}: ${error.message}`);
+                }
+                // Wait a bit between tests
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+            
+            resultDiv.className = 'result success';
+            resultDiv.textContent = `All tests completed:\n${results.join('\n')}`;
+        }
+
+        // Show a warning about API key
+        window.onload = function() {
+            if (API_KEY === 'your-webhook-api-key') {
+                alert('⚠️ Warning: API key not configured. Tests will likely fail with 401 Unauthorized. This is expected for security reasons.');
+            }
+        };
+    </script>
+</body>
+</html>

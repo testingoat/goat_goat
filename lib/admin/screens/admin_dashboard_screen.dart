@@ -6,6 +6,7 @@ import 'product_reviews_screen.dart';
 import 'delivery_fee_list_screen.dart';
 import 'notifications_screen.dart';
 import 'debug_panel_screen.dart';
+import 'analytics_dashboard_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -454,7 +455,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
   Widget _buildAnalyticsContent() {
-    return const Center(child: Text('Analytics - Coming Soon'));
+    // Zero-risk implementation: Use new analytics dashboard
+    // while preserving existing admin panel functionality
+    return const AnalyticsDashboardScreen();
   }
 
   Widget _buildPricingContent() {

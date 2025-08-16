@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { DebugLogger } from '../_shared/debug-logger.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -126,11 +127,12 @@ async function checkProductStatusInOdoo({ odooProductId, productName }: { odooPr
 }
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
-  }
+  return await DebugLogger.wrapExecution('odoo-status-sync', req, async () => {
+    if (req.method === 'OPTIONS') {
+      return new Response('ok', { headers: corsHeaders });
+    }
 
-  try {
+    try {
     console.log(`🚀 ODOO STATUS SYNC - Webhook called with method: ${req.method}`);
     
     // API Key authentication
@@ -226,5 +228,6 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500
     });
-  }
+    }
+  });
 });

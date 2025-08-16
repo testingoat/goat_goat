@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { DebugLogger } from '../_shared/debug-logger.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -153,11 +154,12 @@ async function createProductInOdoo(productData, options = { dryRun: false, dupCh
 }
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
-  }
+  return await DebugLogger.wrapExecution('product-sync-webhook', req, async () => {
+    if (req.method === 'OPTIONS') {
+      return new Response('ok', { headers: corsHeaders });
+    }
 
-  try {
+    try {
     console.log(`🚀 WORKING FIX - New webhook called with method: ${req.method}`);
     
     // API Key authentication
@@ -320,13 +322,14 @@ Deno.serve(async (req) => {
       status: 200
     });
 
-  } catch (error) {
-    console.error(`❌ WORKING FIX - Webhook error: ${error.message}`);
-    return new Response(JSON.stringify({
-      error: error.message
-    }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 500
-    });
-  }
+    } catch (error) {
+      console.error(`❌ WORKING FIX - Webhook error: ${error.message}`);
+      return new Response(JSON.stringify({
+        error: error.message
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 500
+      });
+    }
+  });
 });
