@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'feature_flag_service.dart';
+import 'anomaly_detection_service.dart';
 
 /// Service for Admin Debug Panel data operations
 /// Implements zero-risk pattern with read-only operations and proper error handling
@@ -887,6 +888,54 @@ class DebugPanelService {
         'error': e.toString(),
         'data': {'insights': [], 'recommendations': []},
       };
+    }
+  }
+
+  // =====================================================
+  // PHASE 3 FEATURES - ANOMALY DETECTION & ANALYTICS
+  // =====================================================
+
+  /// Get anomaly detection results (Phase 3)
+  Future<Map<String, dynamic>> getAnomalyDetectionResults() async {
+    try {
+      if (kDebugMode) {
+        print('🔍 DEBUG_PANEL - Running anomaly detection...');
+      }
+
+      final anomalyService = AnomalyDetectionService();
+      if (!anomalyService.isAvailable) {
+        return {
+          'success': false,
+          'error': 'Anomaly detection service not available',
+          'data': [],
+        };
+      }
+
+      final result = await anomalyService.detectTrafficAnomalies();
+
+      if (kDebugMode) {
+        print('✅ DEBUG_PANEL - Anomaly detection completed');
+      }
+
+      return result;
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ DEBUG_PANEL - Error running anomaly detection: $e');
+      }
+      return {'success': false, 'error': e.toString(), 'data': []};
+    }
+  }
+
+  /// Get traffic pattern analysis (Phase 3)
+  Future<Map<String, dynamic>> getTrafficPatternAnalysis() async {
+    try {
+      final anomalyService = AnomalyDetectionService();
+      return await anomalyService.analyzeTrafficPatterns();
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ DEBUG_PANEL - Error analyzing traffic patterns: $e');
+      }
+      return {'success': false, 'error': e.toString(), 'data': {}};
     }
   }
 }
