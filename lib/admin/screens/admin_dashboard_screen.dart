@@ -5,6 +5,7 @@ import 'admin_login_screen.dart';
 import 'product_reviews_screen.dart';
 import 'delivery_fee_list_screen.dart';
 import 'notifications_screen.dart';
+import 'debug_panel_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -51,6 +52,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     AdminMenuItem(
       icon: Icons.settings,
       title: 'System Admin',
+      permission: 'system_administration',
+    ),
+    AdminMenuItem(
+      icon: Icons.bug_report,
+      title: 'Debug Panel (Logs)',
       permission: 'system_administration',
     ),
   ];
@@ -290,6 +296,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         return _buildPricingContent();
       case 6:
         return _buildSystemAdminContent();
+      case 7:
+        return _buildDebugPanelContent();
       default:
         return _buildDashboardContent();
     }
@@ -455,6 +463,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   Widget _buildSystemAdminContent() {
     return const Center(child: Text('System Administration - Coming Soon'));
+  }
+
+  Widget _buildDebugPanelContent() {
+    return const DebugPanelScreen();
   }
 
   Future<void> _handleLogout() async {
