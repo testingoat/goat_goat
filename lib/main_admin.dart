@@ -123,7 +123,31 @@ class _AdminAppWrapperState extends State<AdminAppWrapper> {
       }
 
       // Check authentication status
-      final isAuthenticated = await AdminAuthService().isAuthenticated();
+      final adminAuth = AdminAuthService();
+      bool isAuthenticated = await adminAuth.isAuthenticated();
+
+      // Auto-login for development mode
+      if (!isAuthenticated && AdminConstants.isDevelopment) {
+        if (kDebugMode) {
+          print('🔧 Development mode: Attempting auto-login...');
+        }
+
+        final loginResult = await adminAuth.login(
+          email: 'admin@goatgoat.com',
+          password: 'admin123',
+        );
+
+        if (loginResult['success'] == true) {
+          isAuthenticated = true;
+          if (kDebugMode) {
+            print('✅ Development auto-login successful');
+          }
+        } else {
+          if (kDebugMode) {
+            print('❌ Development auto-login failed: ${loginResult['message']}');
+          }
+        }
+      }
 
       if (mounted) {
         setState(() {
