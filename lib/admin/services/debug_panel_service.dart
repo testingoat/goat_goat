@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'supabase_logs_service.dart';
 import 'feature_flag_service.dart';
 import 'anomaly_detection_service.dart';
+import 'admin_auth_service.dart';
 
 /// Service for Admin Debug Panel data operations
 /// Implements zero-risk pattern with read-only operations and proper error handling
@@ -23,32 +24,55 @@ class DebugPanelService {
   /// Check authentication status and permissions
   Future<Map<String, dynamic>> checkAuthenticationStatus() async {
     try {
+      // Check admin authentication (custom system)
+      final adminAuth = AdminAuthService();
+      final isAdminAuthenticated = await adminAuth.isAuthenticated();
+      final currentAdmin = adminAuth.currentAdmin;
+
+      // Also check Supabase auth for comparison
       final user = _supabase.auth.currentUser;
       final session = _supabase.auth.currentSession;
 
       if (kDebugMode) {
         print('🔍 DEBUG_PANEL_SERVICE - Checking authentication...');
-        print('  - User ID: ${user?.id ?? 'null'}');
-        print('  - User email: ${user?.email ?? 'null'}');
-        print('  - Session valid: ${session != null}');
-        print('  - Session expires: ${session?.expiresAt ?? 'null'}');
+        print('  - Admin authenticated: $isAdminAuthenticated');
+        print('  - Admin ID: ${adminAuth.currentAdminId ?? 'null'}');
+        print('  - Admin email: ${currentAdmin?['email'] ?? 'null'}');
+        print('  - Supabase User ID: ${user?.id ?? 'null'}');
+        print('  - Supabase User email: ${user?.email ?? 'null'}');
+        print('  - Supabase Session valid: ${session != null}');
       }
 
-      // Test a simple query to check permissions
-      final testQuery = await _supabase
-          .from('edge_function_logs')
-          .select('count(*)')
-          .limit(1);
+      // Test a simple query to check permissions (with RLS disabled, this should work)
+      Map<String, dynamic> testQueryResult = {};
+      bool canQueryLogs = false;
+
+      try {
+        final testQuery = await _supabase
+            .from('edge_function_logs')
+            .select('count(*)')
+            .limit(1);
+        testQueryResult = {'query_result': testQuery};
+        canQueryLogs = true;
+      } catch (queryError) {
+        testQueryResult = {'query_error': queryError.toString()};
+        canQueryLogs = false;
+      }
 
       return {
         'success': true,
-        'authenticated': user != null,
-        'user_id': user?.id,
-        'user_email': user?.email,
-        'session_valid': session != null,
-        'session_expires_at': session?.expiresAt,
-        'can_query_logs': true,
-        'test_query_result': testQuery,
+        'admin_authenticated': isAdminAuthenticated,
+        'admin_user_id': adminAuth.currentAdminId,
+        'admin_email': currentAdmin?['email'],
+        'admin_role': currentAdmin?['role'],
+        'supabase_authenticated': user != null,
+        'supabase_user_id': user?.id,
+        'supabase_user_email': user?.email,
+        'supabase_session_valid': session != null,
+        'supabase_session_expires_at': session?.expiresAt,
+        'can_query_logs': canQueryLogs,
+        'test_query_result': testQueryResult,
+        'rls_disabled': true, // We disabled RLS for testing
       };
     } catch (e) {
       if (kDebugMode) {
@@ -57,7 +81,8 @@ class DebugPanelService {
       return {
         'success': false,
         'error': e.toString(),
-        'authenticated': false,
+        'admin_authenticated': false,
+        'supabase_authenticated': false,
         'can_query_logs': false,
       };
     }
@@ -73,8 +98,12 @@ class DebugPanelService {
       if (kDebugMode) {
         print('🔍 DEBUG_PANEL_SERVICE - Testing database connection...');
         print('  - Supabase client initialized: ${_supabase.toString()}');
-        print('  - Auth user: ${_supabase.auth.currentUser?.id ?? 'null'}');
-        print('  - Auth session: ${_supabase.auth.currentSession != null}');
+        print(
+          '  - Supabase auth user: ${_supabase.auth.currentUser?.id ?? 'null'}',
+        );
+        print('  - Supabase session: ${_supabase.auth.currentSession != null}');
+        print('  - Admin auth: ${AdminAuthService().currentAdminId ?? 'null'}');
+        print('  - RLS disabled: true (for testing)');
       }
 
       // Test basic query
@@ -94,8 +123,11 @@ class DebugPanelService {
         'success': true,
         'message': 'Database connection working',
         'sample_data': testResponse,
-        'auth_user_id': _supabase.auth.currentUser?.id,
-        'auth_session_valid': _supabase.auth.currentSession != null,
+        'supabase_auth_user_id': _supabase.auth.currentUser?.id,
+        'supabase_auth_session_valid': _supabase.auth.currentSession != null,
+        'admin_auth_user_id': AdminAuthService().currentAdminId,
+        'admin_authenticated': await AdminAuthService().isAuthenticated(),
+        'rls_disabled': true,
       };
     } catch (e) {
       if (kDebugMode) {
@@ -107,8 +139,10 @@ class DebugPanelService {
         'success': false,
         'error': e.toString(),
         'message': 'Database connection failed',
-        'auth_user_id': _supabase.auth.currentUser?.id,
-        'auth_session_valid': _supabase.auth.currentSession != null,
+        'supabase_auth_user_id': _supabase.auth.currentUser?.id,
+        'supabase_auth_session_valid': _supabase.auth.currentSession != null,
+        'admin_auth_user_id': AdminAuthService().currentAdminId,
+        'rls_disabled': true,
       };
     }
   }
@@ -130,10 +164,14 @@ class DebugPanelService {
           '  - Filters: endpoint=$endpoint, status=$statusCode, start=$startDate, end=$endDate',
         );
         print('  - Pagination: page=$page, limit=$limit');
-        print('  - Auth user: ${_supabase.auth.currentUser?.id ?? 'null'}');
         print(
-          '  - Auth session valid: ${_supabase.auth.currentSession != null}',
+          '  - Supabase auth user: ${_supabase.auth.currentUser?.id ?? 'null'}',
         );
+        print(
+          '  - Supabase session valid: ${_supabase.auth.currentSession != null}',
+        );
+        print('  - Admin auth: ${AdminAuthService().currentAdminId ?? 'null'}');
+        print('  - RLS disabled: true (for testing)');
       }
 
       // Build query with filters
