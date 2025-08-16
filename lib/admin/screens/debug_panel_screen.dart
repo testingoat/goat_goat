@@ -25,7 +25,6 @@ class _DebugPanelScreenState extends State<DebugPanelScreen>
   static const int _odooSessionTab = 1;
   static const int _productStatusTab = 2;
   static const int _featureFlagsTab = 3;
-  static const int _orderManagementTab = 4;
 
   // Loading states
   bool _isLoading = false;
@@ -36,10 +35,9 @@ class _DebugPanelScreenState extends State<DebugPanelScreen>
   Map<String, dynamic> _sessionData = {};
   Map<String, dynamic> _productData = {};
   Map<String, dynamic> _flagsData = {};
-  Map<String, dynamic> _omsData = {};
   Map<String, dynamic> _systemHealth = {};
   Map<String, dynamic> _systemAlerts = {};
-  Map<String, dynamic> _advancedAnalytics = {};
+  final Map<String, dynamic> _advancedAnalytics = {};
 
   // Filters for traffic explorer
   String? _selectedEndpoint;
@@ -53,7 +51,7 @@ class _DebugPanelScreenState extends State<DebugPanelScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 5, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _tabController.addListener(_onTabChanged);
     _loadInitialData();
   }
@@ -120,9 +118,6 @@ class _DebugPanelScreenState extends State<DebugPanelScreen>
           break;
         case _featureFlagsTab:
           await _loadFlagsData();
-          break;
-        case _orderManagementTab:
-          await _loadOMSData();
           break;
       }
     } catch (e) {
@@ -509,7 +504,6 @@ class _DebugPanelScreenState extends State<DebugPanelScreen>
           Tab(text: 'Odoo Sessions'),
           Tab(text: 'Product Status'),
           Tab(text: 'Feature Flags'),
-          Tab(text: 'Order Management'),
         ],
       ),
     );
@@ -523,7 +517,6 @@ class _DebugPanelScreenState extends State<DebugPanelScreen>
         _buildOdooSessionMonitor(),
         _buildProductStatusTracker(),
         _buildFeatureFlagsViewer(),
-        _buildOrderManagementPanel(),
       ],
     );
   }
@@ -2179,432 +2172,5 @@ class _DebugPanelScreenState extends State<DebugPanelScreen>
         );
       }
     }
-  }
-
-  // =====================================================
-  // ORDER MANAGEMENT SYSTEM (OMS) TAB
-  // =====================================================
-
-  /// Load OMS configuration data
-  Future<void> _loadOMSData() async {
-    try {
-      if (kDebugMode) {
-        print('🔧 DEBUG_PANEL - Loading OMS configuration data');
-      }
-
-      final omsService = OMSConfigurationService();
-      final result = await omsService.getAllConfigurations();
-
-      if (mounted) {
-        setState(() {
-          _omsData = result;
-        });
-      }
-
-      if (kDebugMode) {
-        print('✅ DEBUG_PANEL - OMS data loaded: ${result['success']}');
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('❌ DEBUG_PANEL - Error loading OMS data: $e');
-      }
-      if (mounted) {
-        setState(() {
-          _omsData = {'success': false, 'error': e.toString()};
-        });
-      }
-    }
-  }
-
-  /// Build Order Management System control panel
-  Widget _buildOrderManagementPanel() {
-    if (!_omsData.containsKey('success')) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    if (_omsData['success'] != true) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.error_outline, size: 64, color: Colors.red[300]),
-            const SizedBox(height: 16),
-            Text(
-              'Failed to load OMS configuration',
-              style: TextStyle(
-                fontSize: 18,
-                color: Colors.grey[600],
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _omsData['error'] ?? 'Unknown error',
-              style: TextStyle(fontSize: 14, color: Colors.grey[500]),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () => _loadOMSData(),
-              child: const Text('Retry'),
-            ),
-          ],
-        ),
-      );
-    }
-
-    final configurations =
-        _omsData['configurations'] as Map<String, dynamic>? ?? {};
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildOMSHeader(),
-          const SizedBox(height: 24),
-          _buildOMSConfigurationSections(configurations),
-        ],
-      ),
-    );
-  }
-
-  /// Build OMS header with overview
-  Widget _buildOMSHeader() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.green[600]!, Colors.green[700]!],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.green.withValues(alpha: 0.3),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Icon(
-              Icons.settings_applications,
-              color: Colors.white,
-              size: 32,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Order Management System',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Real-time configuration controls for routing, timers, capacity, and notifications',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.9),
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          IconButton(
-            onPressed: () => _loadOMSData(),
-            icon: const Icon(Icons.refresh, color: Colors.white),
-            tooltip: 'Refresh OMS Configuration',
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Build OMS configuration sections
-  Widget _buildOMSConfigurationSections(Map<String, dynamic> configurations) {
-    // Group configurations by type
-    final routingConfigs = <String, dynamic>{};
-    final timerConfigs = <String, dynamic>{};
-    final capacityConfigs = <String, dynamic>{};
-    final notificationConfigs = <String, dynamic>{};
-
-    for (final entry in configurations.entries) {
-      final config = entry.value as Map<String, dynamic>;
-      final type = config['type'] as String? ?? 'general';
-
-      switch (type) {
-        case 'routing':
-          routingConfigs[entry.key] = config;
-          break;
-        case 'timer':
-          timerConfigs[entry.key] = config;
-          break;
-        case 'capacity':
-          capacityConfigs[entry.key] = config;
-          break;
-        case 'notification':
-          notificationConfigs[entry.key] = config;
-          break;
-      }
-    }
-
-    return Column(
-      children: [
-        _buildOMSConfigSection(
-          'Routing Algorithm',
-          Icons.route,
-          Colors.blue,
-          routingConfigs,
-        ),
-        const SizedBox(height: 16),
-        _buildOMSConfigSection(
-          'Timer Settings',
-          Icons.timer,
-          Colors.orange,
-          timerConfigs,
-        ),
-        const SizedBox(height: 16),
-        _buildOMSConfigSection(
-          'Capacity Management',
-          Icons.inventory,
-          Colors.purple,
-          capacityConfigs,
-        ),
-        const SizedBox(height: 16),
-        _buildOMSConfigSection(
-          'Notifications',
-          Icons.notifications,
-          Colors.teal,
-          notificationConfigs,
-        ),
-      ],
-    );
-  }
-
-  /// Build individual OMS configuration section
-  Widget _buildOMSConfigSection(
-    String title,
-    IconData icon,
-    Color color,
-    Map<String, dynamic> configs,
-  ) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withValues(alpha: 0.1),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(12),
-                topRight: Radius.circular(12),
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(icon, color: color, size: 24),
-                const SizedBox(width: 12),
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: color,
-                  ),
-                ),
-                const Spacer(),
-                Text(
-                  '${configs.length} settings',
-                  style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-                ),
-              ],
-            ),
-          ),
-          if (configs.isEmpty)
-            Padding(
-              padding: const EdgeInsets.all(24),
-              child: Text(
-                'No $title configurations found',
-                style: TextStyle(color: Colors.grey[500], fontSize: 14),
-              ),
-            )
-          else
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: configs.length,
-              separatorBuilder: (context, index) =>
-                  Divider(height: 1, color: Colors.grey[200]),
-              itemBuilder: (context, index) {
-                final entry = configs.entries.elementAt(index);
-                return _buildOMSConfigItem(entry.key, entry.value);
-              },
-            ),
-        ],
-      ),
-    );
-  }
-
-  /// Build individual OMS configuration item
-  Widget _buildOMSConfigItem(String key, Map<String, dynamic> config) {
-    final value = config['value'] as Map<String, dynamic>? ?? {};
-    final description = config['description'] as String? ?? '';
-    final updatedAt = config['updated_at'] as String? ?? '';
-
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      key.replaceAll('_', ' ').toUpperCase(),
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    if (description.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        description,
-                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              IconButton(
-                onPressed: () => _editOMSConfiguration(key, value),
-                icon: const Icon(Icons.edit, size: 20),
-                tooltip: 'Edit Configuration',
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.grey[50],
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.grey[200]!),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Current Value:',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.grey[700],
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  _formatConfigValue(value),
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontFamily: 'monospace',
-                    color: Colors.black87,
-                  ),
-                ),
-                if (updatedAt.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    'Last updated: ${_formatDateTime(updatedAt)}',
-                    style: TextStyle(fontSize: 11, color: Colors.grey[500]),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Format configuration value for display
-  String _formatConfigValue(Map<String, dynamic> value) {
-    if (value.containsKey('value')) {
-      final val = value['value'];
-      if (val is Map) {
-        return const JsonEncoder.withIndent('  ').convert(val);
-      } else {
-        return val.toString();
-      }
-    }
-    return const JsonEncoder.withIndent('  ').convert(value);
-  }
-
-  /// Format datetime for display
-  String _formatDateTime(String dateTimeStr) {
-    try {
-      final dateTime = DateTime.parse(dateTimeStr);
-      return '${dateTime.day}/${dateTime.month}/${dateTime.year} ${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
-    } catch (e) {
-      return dateTimeStr;
-    }
-  }
-
-  /// Edit OMS configuration (placeholder for Phase 2)
-  void _editOMSConfiguration(String key, Map<String, dynamic> value) {
-    if (kDebugMode) {
-      print('🔧 OMS CONFIG - Edit configuration: $key');
-    }
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Edit Configuration: $key'),
-        content: const Text(
-          'Configuration editing will be implemented in Phase 2.\n\n'
-          'This will include:\n'
-          '• Real-time value editing\n'
-          '• Validation and safety checks\n'
-          '• Audit logging\n'
-          '• Immediate application of changes',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
   }
 }

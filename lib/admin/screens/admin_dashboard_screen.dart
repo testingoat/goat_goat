@@ -7,6 +7,7 @@ import 'delivery_fee_list_screen.dart';
 import 'notifications_screen.dart';
 import 'debug_panel_screen.dart';
 import 'analytics_dashboard_screen.dart';
+import 'order_management_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -39,6 +40,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       icon: Icons.people,
       title: 'User Management',
       permission: 'user_management',
+    ),
+    AdminMenuItem(
+      icon: Icons.assignment,
+      title: 'Order Management',
+      permission: 'order_management',
     ),
     AdminMenuItem(
       icon: Icons.analytics,
@@ -292,12 +298,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       case 3:
         return _buildUserManagementContent();
       case 4:
-        return _buildAnalyticsContent();
+        return _buildOrderManagementContent();
       case 5:
-        return _buildPricingContent();
+        return _buildAnalyticsContent();
       case 6:
-        return _buildSystemAdminContent();
+        return _buildPricingContent();
       case 7:
+        return _buildSystemAdminContent();
+      case 8:
         return _buildDebugPanelContent();
       default:
         return _buildDashboardContent();
@@ -452,6 +460,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   Widget _buildUserManagementContent() {
     return const Center(child: Text('User Management - Coming Soon'));
+  }
+
+  Widget _buildOrderManagementContent() {
+    return const OrderManagementScreen();
   }
 
   Widget _buildAnalyticsContent() {
