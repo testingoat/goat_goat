@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import '../supabase_service.dart';
 import '../services/otp_service_fallback.dart';
 import '../services/auth_service.dart';
 import '../services/auto_location_service.dart';
+import '../services/fcm_service.dart';
 import 'customer_product_catalog_screen.dart';
 import '../main.dart';
 
@@ -484,6 +486,9 @@ class _CustomerPortalScreenState extends State<CustomerPortalScreen> {
       // Save customer session for persistent login
       await _authService.saveCustomerSession(customer);
 
+      // Subscribe to customer-specific FCM topics
+      await _subscribeToCustomerTopics();
+
       // Navigate back to main app to trigger proper routing with CustomerAppShell
       if (mounted) {
         Navigator.pushAndRemoveUntil(
@@ -537,6 +542,24 @@ class _CustomerPortalScreenState extends State<CustomerPortalScreen> {
     } catch (e) {
       print('❌ LOGIN - Auto-location error: $e');
       // Don't show error to user, just continue without auto-location
+    }
+  }
+
+  /// Subscribe to customer-specific FCM topics after login
+  Future<void> _subscribeToCustomerTopics() async {
+    try {
+      final fcmService = FCMService();
+      if (fcmService.isInitialized) {
+        await fcmService.subscribeToRoleTopics('customer');
+        if (kDebugMode) {
+          print('✅ Customer subscribed to FCM topics');
+        }
+      }
+    } catch (e) {
+      // Non-critical error - don't block login flow
+      if (kDebugMode) {
+        print('⚠️ Failed to subscribe to customer FCM topics: $e');
+      }
     }
   }
 }

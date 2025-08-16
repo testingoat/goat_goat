@@ -85,6 +85,16 @@ class FCMService {
   Future<bool> storeTokenForSeller(String sellerId) async {
     return await _impl.storeTokenForSeller(sellerId);
   }
+
+  /// Subscribe to role-specific topics based on user type
+  Future<bool> subscribeToRoleTopics(String userRole) async {
+    return await _impl.subscribeToRoleTopics(userRole);
+  }
+
+  /// Unsubscribe from role-specific topics (useful during logout)
+  Future<bool> unsubscribeFromRoleTopics(String userRole) async {
+    return await _impl.unsubscribeFromRoleTopics(userRole);
+  }
 }
 
 /// Background message handler (must be top-level function)

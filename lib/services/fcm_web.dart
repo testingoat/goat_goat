@@ -59,7 +59,7 @@ class FCMImplementation implements FCMInterface {
     if (kDebugMode) {
       print('🔔 FCM: Web stub - getDiagnostics() called');
     }
-    
+
     return {
       'is_initialized': _isInitialized,
       'platform': 'web',
@@ -93,6 +93,22 @@ class FCMImplementation implements FCMInterface {
       print('🔔 FCM: Web stub - storeTokenForSeller($sellerId) called');
     }
     return true; // Return success but do nothing
+  }
+
+  @override
+  Future<bool> subscribeToRoleTopics(String userRole) async {
+    if (kDebugMode) {
+      print('🔔 FCM: Web stub - subscribeToRoleTopics($userRole) called');
+    }
+    return true;
+  }
+
+  @override
+  Future<bool> unsubscribeFromRoleTopics(String userRole) async {
+    if (kDebugMode) {
+      print('🔔 FCM: Web stub - unsubscribeFromRoleTopics($userRole) called');
+    }
+    return true;
   }
 }
 

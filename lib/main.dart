@@ -297,6 +297,9 @@ class _MyAppState extends State<MyApp> {
         final userRole = await authService.getUserRole();
         final userData = await authService.getUserData();
 
+        // Subscribe to role-specific FCM topics for existing session
+        await _subscribeToRoleTopicsForExistingSession(userRole);
+
         if (mounted) {
           setState(() {
             _isLoggedIn = true;
@@ -339,6 +342,28 @@ class _MyAppState extends State<MyApp> {
           _userData = null;
           _isLoading = false;
         });
+      }
+    }
+  }
+
+  /// Subscribe to role-specific FCM topics for existing session
+  Future<void> _subscribeToRoleTopicsForExistingSession(
+    String? userRole,
+  ) async {
+    if (userRole == null) return;
+
+    try {
+      final fcmService = FCMService();
+      if (fcmService.isInitialized) {
+        await fcmService.subscribeToRoleTopics(userRole);
+        if (kDebugMode) {
+          print('✅ Existing session subscribed to $userRole FCM topics');
+        }
+      }
+    } catch (e) {
+      // Non-critical error - don't block app startup
+      if (kDebugMode) {
+        print('⚠️ Failed to subscribe to FCM topics for existing session: $e');
       }
     }
   }

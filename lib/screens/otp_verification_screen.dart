@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 import 'dart:ui';
 import 'dart:async';
 import '../services/otp_service_fallback.dart';
@@ -181,11 +182,23 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
     try {
       final fcmService = FCMService();
       if (fcmService.isInitialized && seller['id'] != null) {
+        // Store FCM token in database
         await fcmService.storeTokenForSeller(seller['id']);
+
+        // Subscribe to seller-specific FCM topics
+        await fcmService.subscribeToRoleTopics('seller');
+
+        if (kDebugMode) {
+          print('✅ Seller FCM token stored and subscribed to topics');
+        }
       }
     } catch (e) {
       // Non-critical error - don't block login flow
-      print('Warning: Failed to store FCM token for seller - $e');
+      if (kDebugMode) {
+        print(
+          '⚠️ Failed to store FCM token or subscribe to topics for seller: $e',
+        );
+      }
     }
   }
 

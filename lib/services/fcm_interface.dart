@@ -31,6 +31,12 @@ abstract class FCMInterface {
 
   /// Store FCM token for a specific seller (call this after seller login)
   Future<bool> storeTokenForSeller(String sellerId);
+
+  /// Subscribe to role-specific topics based on user type
+  Future<bool> subscribeToRoleTopics(String userRole);
+
+  /// Unsubscribe from role-specific topics (useful during logout)
+  Future<bool> unsubscribeFromRoleTopics(String userRole);
 }
 
 /// Notification Settings interface
@@ -41,8 +47,4 @@ abstract class NotificationSettings {
 
 /// Authorization Status enum
 /// Platform-agnostic representation of notification authorization
-enum AuthorizationStatus { 
-  denied, 
-  authorized, 
-  provisional 
-}
+enum AuthorizationStatus { denied, authorized, provisional }

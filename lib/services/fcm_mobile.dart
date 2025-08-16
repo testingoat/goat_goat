@@ -396,6 +396,90 @@ class FCMImplementation implements FCMInterface {
     }
   }
 
+  /// Subscribe to role-specific topics based on user type
+  @override
+  Future<bool> subscribeToRoleTopics(String userRole) async {
+    if (!_enableTopicSubscriptions || !_isInitialized) return false;
+
+    try {
+      // Subscribe to role-specific topic
+      String roleTopic = '';
+      switch (userRole.toLowerCase()) {
+        case 'customer':
+          roleTopic = 'customers';
+          break;
+        case 'seller':
+          roleTopic = 'sellers';
+          break;
+        case 'admin':
+          roleTopic = 'admins';
+          break;
+        default:
+          if (kDebugMode) {
+            print('🔔 FCM: Unknown user role: $userRole');
+          }
+          return false;
+      }
+
+      await _firebaseMessaging.subscribeToTopic(roleTopic);
+
+      if (kDebugMode) {
+        print(
+          '🔔 FCM: Subscribed to role topic: $roleTopic for user role: $userRole',
+        );
+      }
+
+      return true;
+    } catch (e) {
+      if (kDebugMode) {
+        print('🔔 FCM: Role topic subscription failed - $e');
+      }
+      return false;
+    }
+  }
+
+  /// Unsubscribe from role-specific topics (useful during logout)
+  @override
+  Future<bool> unsubscribeFromRoleTopics(String userRole) async {
+    if (!_enableTopicSubscriptions || !_isInitialized) return false;
+
+    try {
+      // Unsubscribe from role-specific topic
+      String roleTopic = '';
+      switch (userRole.toLowerCase()) {
+        case 'customer':
+          roleTopic = 'customers';
+          break;
+        case 'seller':
+          roleTopic = 'sellers';
+          break;
+        case 'admin':
+          roleTopic = 'admins';
+          break;
+        default:
+          if (kDebugMode) {
+            print('🔔 FCM: Unknown user role: $userRole');
+          }
+          return false;
+      }
+
+      await _firebaseMessaging.unsubscribeFromTopic(roleTopic);
+
+      if (kDebugMode) {
+        print(
+          '🔔 FCM: Unsubscribed from role topic: $roleTopic for user role: $userRole',
+        );
+      }
+
+      return true;
+    } catch (e) {
+      if (kDebugMode) {
+        print('🔔 FCM: Role topic unsubscription failed - $e');
+      }
+      return false;
+    }
+  }
+
   @override
   Future<bool> subscribeToTopic(String topic) async {
     if (!_enableTopicSubscriptions || !_isInitialized) return false;
