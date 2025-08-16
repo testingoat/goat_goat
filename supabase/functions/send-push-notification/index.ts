@@ -339,23 +339,47 @@ serve(async (req) => {
           throw new Error(`Invalid target_user_type: ${target_user_type}`)
       }
 
+      // Determine lookup field based on target_user_id format
+      const isPhoneNumber = /^\d{10}$/.test(target_user_id) // 10-digit phone number
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(target_user_id)
+
+      let lookupField = 'id'
+      if (isPhoneNumber) {
+        // For phone numbers, use appropriate phone field based on table
+        switch (target_user_type) {
+          case 'customer':
+            lookupField = 'phone_number'
+            break
+          case 'seller':
+            lookupField = 'contact_phone'
+            break
+          case 'admin':
+            lookupField = 'phone' // Assuming admin table has phone field
+            break
+        }
+      } else if (!isUUID) {
+        throw new Error(`Invalid target_user_id format: ${target_user_id}. Must be UUID or 10-digit phone number.`)
+      }
+
+      console.log(`🔍 Looking up user by ${lookupField}: ${target_user_id}`)
+
       // First check if user exists
       const { data: userExists, error: userCheckError } = await supabase
         .from(tableName)
         .select('id')
-        .eq('id', target_user_id)
+        .eq(lookupField, target_user_id)
         .single()
-        
+
       if (userCheckError) {
-        console.error('❌ User not found in table:', tableName, target_user_id)
+        console.error('❌ User not found in table:', tableName, `${lookupField}=${target_user_id}`)
         throw new Error(`User ${target_user_id} not found in ${tableName} table`)
       }
-      
+
       // Get user's FCM token from database
       const { data: user, error } = await supabase
         .from(tableName)
         .select('fcm_token')
-        .eq('id', target_user_id)
+        .eq(lookupField, target_user_id)
         .single()
 
       if (error) {

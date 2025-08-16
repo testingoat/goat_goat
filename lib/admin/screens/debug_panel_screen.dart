@@ -1029,75 +1029,83 @@ class _DebugPanelScreenState extends State<DebugPanelScreen>
       children: [
         Expanded(
           child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: DataTable(
-              columns: const [
-                DataColumn(label: Text('Timestamp')),
-                DataColumn(label: Text('Endpoint')),
-                DataColumn(label: Text('Status')),
-                DataColumn(label: Text('Latency')),
-                DataColumn(label: Text('User Agent')),
-                DataColumn(label: Text('Actions')),
-              ],
-              rows: logs.map<DataRow>((log) {
-                final timestamp = DateTime.parse(log['ts'] as String);
-                final status = log['status'] as int;
-                final latency = log['latency_ms'] as int? ?? 0;
-                final userAgent = log['user_agent'] as String? ?? 'Unknown';
+            // Add vertical scrolling capability
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minWidth: MediaQuery.of(context).size.width - 32,
+                ),
+                child: DataTable(
+                  columns: const [
+                    DataColumn(label: Text('Timestamp')),
+                    DataColumn(label: Text('Endpoint')),
+                    DataColumn(label: Text('Status')),
+                    DataColumn(label: Text('Latency')),
+                    DataColumn(label: Text('User Agent')),
+                    DataColumn(label: Text('Actions')),
+                  ],
+                  rows: logs.map<DataRow>((log) {
+                    final timestamp = DateTime.parse(log['ts'] as String);
+                    final status = log['status'] as int;
+                    final latency = log['latency_ms'] as int? ?? 0;
+                    final userAgent = log['user_agent'] as String? ?? 'Unknown';
 
-                Color statusColor;
-                if (status >= 200 && status < 300) {
-                  statusColor = Colors.green;
-                } else if (status >= 400 && status < 500) {
-                  statusColor = Colors.orange;
-                } else if (status >= 500) {
-                  statusColor = Colors.red;
-                } else {
-                  statusColor = Colors.grey;
-                }
+                    Color statusColor;
+                    if (status >= 200 && status < 300) {
+                      statusColor = Colors.green;
+                    } else if (status >= 400 && status < 500) {
+                      statusColor = Colors.orange;
+                    } else if (status >= 500) {
+                      statusColor = Colors.red;
+                    } else {
+                      statusColor = Colors.grey;
+                    }
 
-                return DataRow(
-                  cells: [
-                    DataCell(Text(timestamp.toString().substring(11, 19))),
-                    DataCell(Text(log['endpoint'] as String)),
-                    DataCell(
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: statusColor.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(color: statusColor),
-                        ),
-                        child: Text(
-                          status.toString(),
-                          style: TextStyle(
-                            color: statusColor,
-                            fontWeight: FontWeight.bold,
+                    return DataRow(
+                      cells: [
+                        DataCell(Text(timestamp.toString().substring(11, 19))),
+                        DataCell(Text(log['endpoint'] as String)),
+                        DataCell(
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: statusColor.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(color: statusColor),
+                            ),
+                            child: Text(
+                              status.toString(),
+                              style: TextStyle(
+                                color: statusColor,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                    ),
-                    DataCell(Text('${latency}ms')),
-                    DataCell(
-                      Text(
-                        userAgent.length > 20
-                            ? '${userAgent.substring(0, 20)}...'
-                            : userAgent,
-                      ),
-                    ),
-                    DataCell(
-                      IconButton(
-                        icon: const Icon(Icons.visibility),
-                        onPressed: () => _showLogDetails(log),
-                        tooltip: 'View Details',
-                      ),
-                    ),
-                  ],
-                );
-              }).toList(),
+                        DataCell(Text('${latency}ms')),
+                        DataCell(
+                          Text(
+                            userAgent.length > 20
+                                ? '${userAgent.substring(0, 20)}...'
+                                : userAgent,
+                          ),
+                        ),
+                        DataCell(
+                          IconButton(
+                            icon: const Icon(Icons.visibility),
+                            onPressed: () => _showLogDetails(log),
+                            tooltip: 'View Details',
+                          ),
+                        ),
+                      ],
+                    );
+                  }).toList(),
+                ),
+              ),
             ),
           ),
         ),
